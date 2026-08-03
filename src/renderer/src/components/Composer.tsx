@@ -13,6 +13,12 @@ export function Composer(): React.JSX.Element {
   const submit = (e: React.FormEvent): void => {
     e.preventDefault()
     if (!text.trim()) return
+    if (isStreaming) {
+      // A plain `prompt` while the agent is mid-turn is rejected; queue it so
+      // Enter keeps meaning "send" without interrupting the running turn.
+      submitStreaming('followUp')
+      return
+    }
     void sendPrompt(text)
     setText('')
   }

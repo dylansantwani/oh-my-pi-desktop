@@ -48,8 +48,8 @@ protocol (`omp --mode rpc --cwd <project>`, newline-delimited JSON over stdio):
 
 ## Verification evidence
 
-- **Unit tests: 16 passed / 2 skipped** (`npx vitest run`; the 2 skipped are
-  the E2E file gated by `RUN_E2E=1`): rpc-client 5, agent-host 2,
+- **Unit tests: 17 passed / 2 skipped** (`npx vitest run`; the 2 skipped are
+  the E2E file gated by `RUN_E2E=1`): rpc-client 6, agent-host 2,
   transcript 3, session-scanner 4, history 1, session-store 1. Deterministic:
   mock-omp fixture (`test/fixtures/mock-omp.mjs`) + temp dirs.
 - **E2E against the REAL `omp` 17.2.6: 2/2 passed** (`RUN_E2E=1 npx vitest run
@@ -82,25 +82,37 @@ protocol (`omp --mode rpc --cwd <project>`, newline-delimited JSON over stdio):
 - `test/**/*.ts` excluded from tsconfig.node.json (vitest transpiles tests;
   production code typechecks clean).
 
-## Carried-forward findings (per-task reviews — pending final-review triage)
+## Carried-forward findings — RESOLVED (2026-08-03, v1.1 fix pass)
 
-1. `negotiate_protocol` failure response still resolves ready (v2=true on
-   !success) — rpc-client.ts:135-140. No real-omp impact (omp accepts v2).
-2. Transcript empty-hint omits prompt-rejection recovery (lonely user bubble) —
-   Transcript.tsx:19-21. UX only.
-3. Dead `isStreaming` type field in refreshState destructure — store.ts:111.
-   Lint only.
-4. `rememberProject` fire-and-forget without `.catch()` — store.ts:218-222.
-   Unhandled rejection only on userData write failure.
-5. Enter-while-streaming routes to `api.prompt` without streamingBehavior
-   (fails → toast) — Composer UX wart.
-6. `die` test-only command in the production `RpcOutbound` union — cosmetic.
-7. `omp:remember_project` IPC lacks cwd type validation (recall() ignores
-   invalid) — safe.
-8. `clearProject()` has no IPC channel — unused surface.
+The interrupted final-review triage was completed in a follow-up pass; all 8
+findings are fixed and verified (17/17 unit tests, both tsconfig typechecks,
+`npm run build`, dev-mode boot smoke):
 
-All 8 are Minor/cosmetic for v0.1.0; the interrupted final review was to
-adjudicate fix-now vs accept.
+1. **Negotiate-failure handling** — rpc-client.ts: a failed
+   `negotiate_protocol` response now keeps `v2=false`, emits an `error` event
+   ("v2 negotiation rejected"), and still resolves ready (v1 fallback —
+   `rpc_chunk` frames are reassembled regardless). New unit test
+   `test/rpc-client.test.ts` ("falls back to v1 … when v2 negotiation is
+   rejected") via mock env `MOCK_NEGOTIATE_FAIL=1`.
+2. **Transcript recovery hint** — Transcript.tsx shows a debounced (1.2 s)
+   "agent didn't reply" hint when the last message is an unanswered user
+   bubble, so a rejected prompt is never silent. Debounce avoids flashing on
+   the normal send→`agent_start` gap.
+3. **Dead type field** — removed `isStreaming?: boolean` from the
+   `refreshState` destructure type (store.ts).
+4. **`rememberProject` rejection** — `connect()` now `.catch()`es and toasts
+   instead of fire-and-forget (store.ts).
+5. **Enter-while-streaming** — Composer routes Enter to `followUp` (queue)
+   while the agent is mid-turn instead of a `prompt` that gets rejected; the
+   explicit Interrupt button still interrupts.
+6. **`die` removed from `RpcOutbound`** — mock-only command no longer pollutes
+   the production protocol union; the agent-host reconnect test drives it via
+   `client.sendRaw({ type: 'die' })` and the mock now exits without a stray
+   response frame.
+7. **`omp:remember_project` validation** — IPC handler ignores non-string /
+   empty `cwd` instead of writing a malformed `project.json` (ipc.ts).
+8. **`clearProject` dead surface** — removed the unused `ProjectMemory.clear()`
+   method (and its test assertion); remember/recall remain.
 
 ## Build / run instructions
 
@@ -127,11 +139,13 @@ See `oh-my-pi-desktop/README.md`:
 
 ## Next steps (suggested)
 
-- Re-run the final whole-branch review (packages:
-  `.superpowers/sdd/review-final-a.diff` / `review-final-b.diff` in the
-  worktree) and triage the 8 carried-forward findings.
+- Done: the 8 carried-forward findings were triaged and fixed in the v1.1 fix
+  pass (see "Carried-forward findings — RESOLVED" above); Enter-while-streaming
+  and negotiate-failure handling shipped in that pass.
 - Optional: clean up the worktree (`git worktree remove
   ../claude-omp-desktop`, `git branch -d omp-desktop`) once the sync is
   confirmed committed here.
-- Optional v1.1: code signing, auto-updater, Enter-while-streaming handling,
-  negotiate-failure handling.
+- Remaining v1.1 candidates: code signing (SmartScreen), auto-updater
+  (electron-updater + a release feed), and a component-test harness (jsdom +
+  @testing-library/react) so renderer logic like the recovery hint and
+  Enter-while-streaming routing get direct coverage.

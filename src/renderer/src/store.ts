@@ -110,7 +110,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       const st = (await api.getState()) as {
         model?: { provider: string; id: string }
         thinkingLevel?: string
-        isStreaming?: boolean
         messageCount?: number
         contextUsage?: { tokens: number; contextWindow: number; percent: number }
         tokensPerSecond?: number | null
@@ -181,7 +180,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       return
     }
     set({ project })
-    void window.omp.rememberProject(project)
+    window.omp.rememberProject(project).catch((e) => {
+      get().toast(`Couldn't remember project: ${(e as Error).message}`, 'error')
+    })
     await get().refreshSessions()
   },
 

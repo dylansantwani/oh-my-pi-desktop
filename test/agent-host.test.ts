@@ -55,7 +55,9 @@ describe('AgentHost', () => {
     const off = h.onStatus((s) => statuses.push(s))
     await h.connect(process.cwd())
     // Kill the agent process via a mock command; host must auto-reconnect.
-    await h.client!.send({ type: 'die' })
+    // sendRaw is used because 'die' is mock-only and must not pollute the
+    // production RpcOutbound union (no response is expected or awaited).
+    h.client!.sendRaw({ type: 'die' })
     // Wait on status transitions in order (reconnecting, then connected) so the
     // test can neither miss a transition nor race the respawned process.
     await waitForStatus(h, 'reconnecting')

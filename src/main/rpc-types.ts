@@ -15,7 +15,6 @@ export type RpcOutbound =
   | { id?: string; type: 'set_session_name'; name: string }
   | { id?: string; type: 'get_messages_page'; cursor?: string; limit?: number }
   | { id?: string; type: 'get_session_stats' }
-  | { id?: string; type: 'die' } // mock-only: kill the omp process (agent-host reconnect test)
 
 export interface RpcResponse {
   id?: string

@@ -33,7 +33,11 @@ export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: str
     return res.canceled ? null : res.filePaths[0] ?? null
   })
   ipcMain.handle('omp:recall_project', () => memory.recall())
-  ipcMain.handle('omp:remember_project', (_e, cwd: string) => memory.remember(cwd))
+  ipcMain.handle('omp:remember_project', (_e, cwd: string) => {
+    // Defensive: recall() already ignores corrupt files, so a bad write here is
+    // worse than no write at all — only persist well-formed paths.
+    if (typeof cwd === 'string' && cwd.length > 0) memory.remember(cwd)
+  })
   ipcMain.handle('omp:omp_path', () => ompPath)
   ipcMain.handle('omp:list_sessions', (_e, cwd: string) => scanSessions(defaultSessionDir(), cwd))
 

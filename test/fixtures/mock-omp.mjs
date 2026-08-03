@@ -34,7 +34,11 @@ rl.on('line', (line) => {
   }
   switch (cmd.type) {
     case 'negotiate_protocol':
-      respond(cmd.id, 'negotiate_protocol', { protocolVersion: 2 })
+      if (process.env.MOCK_NEGOTIATE_FAIL === '1') {
+        emit({ id: cmd.id, type: 'response', command: 'negotiate_protocol', success: false, error: 'v2 not supported' })
+      } else {
+        respond(cmd.id, 'negotiate_protocol', { protocolVersion: 2 })
+      }
       break
     case 'prompt': {
       emit({ type: 'agent_start' })
@@ -84,11 +88,10 @@ rl.on('line', (line) => {
       // respond out of order relative to a later fast command
       setTimeout(() => respond(cmd.id, 'slow', { slow: true }), 150)
       break
-    case 'die': {
-      const line = JSON.stringify({ id: cmd.id, type: 'response', command: 'die', success: true, data: {} }) + '\n'
-      process.stdout.write(line, () => setTimeout(() => process.exit(0), 50))
+    case 'die':
+      // No response: just exit so the host sees an agent crash and reconnects.
+      setTimeout(() => process.exit(0), 50)
       break
-    }
     default:
       respond(cmd.id, cmd.type, {})
   }

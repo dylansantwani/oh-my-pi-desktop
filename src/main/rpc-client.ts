@@ -136,7 +136,14 @@ export class RpcClient extends EventEmitter {
       case 'response': {
         const res = obj as unknown as RpcResponse
         if (res.command === 'negotiate_protocol') {
-          this.v2 = true
+          // A failed negotiation falls back to v1 — the server still works, and
+          // rpc_chunk frames are reassembled whenever they arrive regardless.
+          if (res.success) {
+            this.v2 = true
+          } else {
+            this.v2 = false
+            this.emit('error', new Error(`v2 negotiation rejected: ${res.error ?? 'unknown'}`))
+          }
           this.finishReady()
           break
         }

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 export class ProjectMemory {
@@ -18,12 +18,5 @@ export class ProjectMemory {
   remember(cwd: string): void {
     mkdirSync(join(this.file, '..'), { recursive: true })
     writeFileSync(this.file, JSON.stringify({ cwd }, null, 2), 'utf8')
-  }
-  clear(): void {
-    try {
-      rmSync(this.file, { force: true })
-    } catch {
-      /* ignore */
-    }
   }
 }

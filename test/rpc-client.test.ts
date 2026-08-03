@@ -50,6 +50,20 @@ describe('RpcClient', () => {
     expect(await slow).toEqual({ slow: true })
   })
 
+  it('falls back to v1 (ready still resolves) when v2 negotiation is rejected', async () => {
+    const c = new RpcClient({ ompPath: MOCK, cwd: process.cwd(), scriptMode: true, env: { MOCK_NEGOTIATE_FAIL: '1' } })
+    clients.push(c)
+    const errors: string[] = []
+    c.on('error', (e) => errors.push(e.message))
+    await c.start()
+    expect(errors.some((m) => m.includes('v2 negotiation rejected'))).toBe(true)
+    // v1 fallback stays fully functional — prompt still streams.
+    const seen: string[] = []
+    c.on('event', (ev) => seen.push(ev.type as string))
+    await c.send({ type: 'prompt', message: 'hi' })
+    expect(seen).toContain('agent_end')
+  })
+
   it('reassembles a v2 chunked response frame', async () => {
     const c = makeClient()
     await c.start()
