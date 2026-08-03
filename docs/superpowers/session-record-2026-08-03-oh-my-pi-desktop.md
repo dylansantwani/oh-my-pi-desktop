@@ -168,6 +168,15 @@ Shipped on top of v1.1 (commits `9a2ddec`, `4eac155`, plus this pass):
    `userData/window-state.json` (debounced on resize/move, saved on close),
    restores them on launch with off-screen detection, and opens maximized on
    first run. Verified in the packaged build: window opens at 1936x1056.
+6. **Stray "Oh My Pi" modal on connect (user-reported: "small subwindow
+   within the app once it loads the deepseek")** — omp 17.x pushes
+   non-dialog extension UI (e.g. `setWidget` for its autoresearch widget)
+   through `extension_ui_request`; the store set `uiRequest` for every one,
+   so the modal shell rendered an empty box titled "Oh My Pi" whenever the
+   agent connected. `store.ts` now whitelists dialog methods
+   (confirm/select/input/editor/notify) and absorbs the rest. Contract test
+   `test/renderer/ui-request.test.ts` (3 tests: setWidget absorbed, notify
+   passes, methodless request passes). Suite now **30 passed / 2 skipped**.
 
 ## Build / run instructions
 

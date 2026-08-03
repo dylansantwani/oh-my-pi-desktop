@@ -281,4 +281,14 @@ api.onEvent((frame) => {
     useAppStore.setState((prev) => ({ messages: applyEvent(prev.messages, frame) }))
   }
 })
-api.onUiRequest((req) => useAppStore.setState({ uiRequest: req }))
+// omp also pushes non-dialog extension UI (e.g. setWidget for its status
+// widgets) through the same channel — only methods that render as a dialog
+// belong in uiRequest. Anything else is absorbed so it can't pop a stray
+// modal on connect.
+const DIALOG_METHODS: Record<string, true> = { confirm: true, select: true, input: true, editor: true, notify: true }
+api.onUiRequest((req) => {
+  let method: unknown
+  if (req && typeof req === 'object' && 'method' in req) method = req.method
+  if (typeof method === 'string' && !DIALOG_METHODS[method]) return
+  useAppStore.setState({ uiRequest: req })
+})
