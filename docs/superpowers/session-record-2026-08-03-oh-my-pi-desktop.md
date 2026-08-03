@@ -162,6 +162,12 @@ Shipped on top of v1.1 (commits `9a2ddec`, `4eac155`, plus this pass):
    bundles it into `out/main/index.js` — externalized, the named import
    crashes the packaged app at boot ("Named export 'autoUpdater' not found").
    Packaged smoke (v0.1.1): window up, 4 processes, title "Oh My Pi Desktop".
+5. **Window state (user-reported: "a smaller window just appears")** — the
+   app always opened at the fixed 1280x800, which reads as small on a
+   1080p screen. `src/main/index.ts` now persists bounds + maximized flag to
+   `userData/window-state.json` (debounced on resize/move, saved on close),
+   restores them on launch with off-screen detection, and opens maximized on
+   first run. Verified in the packaged build: window opens at 1936x1056.
 
 ## Build / run instructions
 
