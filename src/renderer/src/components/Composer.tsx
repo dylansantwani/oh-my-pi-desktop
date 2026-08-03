@@ -4,14 +4,17 @@ import { Send, Square } from 'lucide-react'
 
 export function Composer(): React.JSX.Element {
   const [text, setText] = useState('')
+  const status = useAppStore((s) => s.status)
   const isStreaming = useAppStore((s) => s.isStreaming)
   const sendPrompt = useAppStore((s) => s.sendPrompt)
   const abort = useAppStore((s) => s.abort)
   const steer = useAppStore((s) => s.steer)
   const followUp = useAppStore((s) => s.followUp)
+  const connected = status === 'connected'
 
   const submit = (e: React.FormEvent): void => {
     e.preventDefault()
+    if (!connected) return
     if (!text.trim()) return
     if (isStreaming) {
       // A plain `prompt` while the agent is mid-turn is rejected; queue it so
@@ -40,9 +43,10 @@ export function Composer(): React.JSX.Element {
             ;(e.currentTarget.form as HTMLFormElement).requestSubmit()
           }
         }}
-        placeholder="Message the agent…  (Enter to send, Shift+Enter for newline)"
+        placeholder={connected ? 'Message the agent…  (Enter to send, Shift+Enter for newline)' : 'Connect to a project to start chatting…'}
         rows={1}
         autoFocus
+        disabled={!connected}
       />
       {isStreaming ? (
         <div className="composer-actions">
@@ -57,7 +61,7 @@ export function Composer(): React.JSX.Element {
           </button>
         </div>
       ) : (
-        <button type="submit" className="btn primary" disabled={!text.trim()} title="Send">
+        <button type="submit" className="btn primary" disabled={!connected || !text.trim()} title="Send">
           <Send size={16} />
         </button>
       )}

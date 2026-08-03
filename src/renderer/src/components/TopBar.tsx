@@ -6,6 +6,7 @@ const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'ma
 
 export function TopBar(): React.JSX.Element {
   const model = useAppStore((s) => s.model)
+  const status = useAppStore((s) => s.status)
   const thinkingLevel = useAppStore((s) => s.thinkingLevel)
   const fastMode = useAppStore((s) => s.fastMode)
   const setModel = useAppStore((s) => s.setModel)
@@ -14,6 +15,7 @@ export function TopBar(): React.JSX.Element {
   const [models, setModels] = useState<{ provider: string; id: string }[]>([])
 
   useEffect(() => {
+    if (status !== 'connected') return
     void (async () => {
       try {
         const data = (await window.omp.getModels()) as { models?: { provider: string; id: string }[]; data?: unknown }
@@ -23,7 +25,7 @@ export function TopBar(): React.JSX.Element {
         /* not connected */
       }
     })()
-  }, [model])
+  }, [model, status])
 
   return (
     <header className="topbar">

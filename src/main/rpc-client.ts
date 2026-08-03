@@ -69,11 +69,38 @@ export class RpcClient extends EventEmitter {
     const args = this.opts.scriptMode
       ? [this.opts.ompPath, '--mode', 'rpc', '--cwd', this.opts.cwd]
       : ['--mode', 'rpc', '--cwd', this.opts.cwd]
-    this.child = spawn(bin, args, {
-      cwd: this.opts.cwd,
-      env,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true
+    // Windows npm/bun shims are .cmd batch files; child_process can only run
+    // them through cmd.exe. windowsVerbatimArguments keeps our quoting intact —
+    // Node would otherwise escape embedded quotes into \" which cmd.exe rejects.
+    // With /s, cmd strips the outermost quotes and runs `"<bin>" --mode rpc --cwd "<cwd>"`.
+    const shim = !this.opts.scriptMode && process.platform === 'win32' && /\.(cmd|bat)$/i.test(bin)
+    this.child = shim
+      ? spawn('cmd.exe', ['/d', '/s', '/c', `""${bin}" --mode rpc --cwd "${this.opts.cwd}""`], {
+          cwd: this.opts.cwd,
+          env,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true,
+          windowsVerbatimArguments: true
+        })
+      : spawn(bin, args, {
+          cwd: this.opts.cwd,
+          env,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true
+        })
+
+    this.child.on('error', (err) => {
+      // Spawn failure (binary missing, bad path): fail fast instead of waiting
+      // out the ready timeout, and never leave the child 'error' unhandled —
+      // an unhandled 'error' event crashes the Electron main process.
+      this.child = null
+      if (this.readyTimer) {
+        clearTimeout(this.readyTimer)
+        this.readyTimer = null
+      }
+      this.readyPromise?.reject(new Error(`Failed to start omp: ${err.message}`))
+      this.readyPromise = null
+      this.emit('error', err)
     })
 
     this.child.stderr.on('data', (d: Buffer) => {

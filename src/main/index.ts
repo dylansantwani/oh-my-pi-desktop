@@ -53,7 +53,7 @@ if (!gotLock) {
   app.whenReady().then(() => {
     const memory = new ProjectMemory(app.getPath('userData'))
     const ompPath = findOmp() ?? 'omp'
-    const host = new AgentHost({ ompPath })
+    const host = new AgentHost({ ompPath, onLog: (msg) => console.log('[omp]', msg) })
     registerIpc(host, memory, ompPath)
     createWindow()
     app.on('activate', () => {

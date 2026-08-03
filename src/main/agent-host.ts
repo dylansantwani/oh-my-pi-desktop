@@ -20,6 +20,7 @@ export class AgentHost {
   private listeners = new Set<(frame: Record<string, unknown>) => void>()
   private uiListeners = new Set<(req: Record<string, unknown>) => void>()
   private statusListeners = new Set<(s: ConnectionStatus) => void>()
+  private connecting: Promise<void> | null = null
 
   constructor(opts: AgentHostOptions) {
     this.opts = opts
@@ -38,6 +39,20 @@ export class AgentHost {
   }
 
   async connect(project: string): Promise<void> {
+    if (this._status === 'connected' && this._project === project) return
+    // React StrictMode double-mounts effects in dev, and the onboarding retry
+    // can race the auto-connect — dedupe so a second connect doesn't dispose a
+    // live client mid-handshake.
+    if (!this.connecting) {
+      this.connecting = this.doConnect(project).finally(() => {
+        this.connecting = null
+      })
+    }
+    return this.connecting
+  }
+
+  private async doConnect(project: string): Promise<void> {
+    console.log('[host] connect', project)
     this._project = project
     this.setStatus('starting')
     await this.spawn()
@@ -63,14 +78,17 @@ export class AgentHost {
     client.on('exit', () => this.handleExit())
     try {
       await client.start()
+      console.log('[host] connected via', this.opts.ompPath)
       this.setStatus('connected')
     } catch (e) {
+      console.log('[host] spawn failed:', (e as Error).message)
       this.setStatus('offline')
       throw e
     }
   }
 
   private handleExit(): void {
+    console.log('[host] agent exited; reconnecting in 500ms')
     if (this.disposed) return
     this.setStatus('reconnecting')
     this.reconnectTimer = setTimeout(() => {
