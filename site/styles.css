@@ -1,0 +1,255 @@
+/* Oh My Pi Desktop — static site. No build step, no dependencies. */
+
+:root {
+  --bg:        #0a0d12;
+  --bg-soft:   #0f141b;
+  --card:      #121821;
+  --line:      #1f2937;
+  --line-soft: #172032;
+  --ink:       #e8edf5;
+  --ink-dim:   #94a3b8;
+  --ink-faint: #64748b;
+  --green:     #4ade80;
+  --blue:      #60a5fa;
+  --radius:    14px;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ── ambient glow ─────────────────────────────────────── */
+.glow {
+  position: fixed;
+  inset: -30% 0 auto 0;
+  height: 780px;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(46% 42% at 26% 32%, rgba(74, 222, 128, .16), transparent 70%),
+    radial-gradient(46% 42% at 74% 24%, rgba(96, 165, 250, .16), transparent 70%);
+  filter: blur(24px);
+}
+
+main, .nav, footer { position: relative; z-index: 1; }
+
+code { font-family: var(--mono); font-size: .9em; }
+
+/* ── nav ──────────────────────────────────────────────── */
+.nav {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 20px;
+  max-width: 1080px; margin: 0 auto; padding: 20px 24px;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--ink); text-decoration: none; font-weight: 650; letter-spacing: -.01em;
+}
+.brand img { border-radius: 7px; }
+.nav nav { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.nav nav a {
+  color: var(--ink-dim); text-decoration: none;
+  padding: 7px 12px; border-radius: 9px; font-size: .93rem;
+  transition: color .16s, background .16s;
+}
+.nav nav a:hover { color: var(--ink); background: rgba(255,255,255,.05); }
+.nav nav a.ghost {
+  border: 1px solid var(--line); color: var(--ink);
+}
+.nav nav a.ghost:hover { border-color: var(--blue); }
+
+/* ── layout ───────────────────────────────────────────── */
+section {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 72px 24px;
+}
+section h2 {
+  font-size: clamp(1.6rem, 3.4vw, 2.1rem);
+  letter-spacing: -.025em;
+  margin: 0 0 10px;
+}
+.section-lede { color: var(--ink-dim); max-width: 66ch; margin: 0 0 26px; }
+
+/* ── hero ─────────────────────────────────────────────── */
+.hero { text-align: center; padding-top: 46px; padding-bottom: 40px; }
+.hero-icon {
+  border-radius: 22px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+  margin-bottom: 22px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: .78rem; letter-spacing: .09em;
+  text-transform: uppercase; color: var(--ink-faint); margin: 0 0 14px;
+}
+.hero h1 {
+  font-size: clamp(2.1rem, 6vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -.038em;
+  margin: 0 auto 20px;
+  max-width: 18ch;
+  font-weight: 700;
+}
+.grad {
+  background: linear-gradient(100deg, var(--green), var(--blue));
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent;
+}
+.lede {
+  color: var(--ink-dim);
+  max-width: 62ch; margin: 0 auto 30px;
+  font-size: 1.06rem;
+}
+.lede code, .fineprint code, .note code, .step code, .section-lede code, .band code {
+  background: rgba(255,255,255,.07);
+  border: 1px solid var(--line-soft);
+  padding: 1px 6px; border-radius: 6px;
+  color: var(--ink);
+}
+
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-block;
+  padding: 12px 22px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  color: var(--ink); text-decoration: none;
+  font-weight: 560; font-size: .96rem;
+  transition: transform .16s, border-color .16s, background .16s, box-shadow .16s;
+}
+.btn:hover { transform: translateY(-2px); border-color: var(--ink-faint); background: rgba(255,255,255,.04); }
+.btn.primary {
+  background: linear-gradient(100deg, var(--green), var(--blue));
+  color: #04131f; border-color: transparent; font-weight: 680;
+}
+.btn.primary:hover { box-shadow: 0 12px 32px rgba(96,165,250,.3); }
+.fineprint { color: var(--ink-faint); font-size: .87rem; margin: 20px 0 0; }
+
+/* ── screenshot ───────────────────────────────────────── */
+.shot { padding-top: 8px; padding-bottom: 8px; }
+.shot-frame {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-soft);
+  box-shadow: 0 30px 80px rgba(0,0,0,.6);
+}
+.shot-frame img { display: block; width: 100%; height: auto; }
+
+/* ── band ─────────────────────────────────────────────── */
+.band { max-width: none; padding: 0; margin: 60px 0; }
+.band-inner {
+  max-width: 1080px; margin: 0 auto;
+  padding: 26px 30px;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+.band-inner p { margin: 0; color: var(--ink-dim); max-width: 78ch; }
+.band-inner strong { color: var(--ink); }
+
+/* ── feature grid ─────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 16px;
+  margin-top: 26px;
+}
+.grid article {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+  transition: border-color .18s, transform .18s;
+}
+.grid article:hover { border-color: #2b3a52; transform: translateY(-3px); }
+.grid h3 {
+  margin: 0 0 8px; font-size: 1.02rem; letter-spacing: -.012em;
+  display: flex; align-items: center; gap: 9px;
+}
+.ico { font-size: 1.1rem; line-height: 1; }
+.grid p { margin: 0; color: var(--ink-dim); font-size: .93rem; }
+
+/* ── code / diagram ───────────────────────────────────── */
+pre {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  overflow-x: auto;
+  margin: 0;
+}
+pre code { color: var(--ink); font-size: .87rem; line-height: 1.55; white-space: pre; }
+pre code .c { color: var(--ink-faint); }
+.diagram { font-size: .8rem; }
+.diagram code { color: var(--blue); }
+
+.note {
+  margin-top: 22px;
+  padding: 16px 20px;
+  border-left: 3px solid var(--green);
+  background: rgba(74,222,128,.06);
+  border-radius: 0 10px 10px 0;
+  color: var(--ink-dim);
+  font-size: .94rem;
+}
+.note strong { color: var(--ink); }
+
+/* ── steps ────────────────────────────────────────────── */
+.steps { display: grid; gap: 18px; margin-top: 26px; }
+.step {
+  display: grid; grid-template-columns: 40px 1fr; gap: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+.num {
+  display: grid; place-items: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(100deg, var(--green), var(--blue));
+  color: #04131f; font-weight: 750; font-size: 1rem;
+}
+.step h3 { margin: 6px 0 6px; font-size: 1.04rem; letter-spacing: -.012em; }
+.step p { margin: 0 0 12px; color: var(--ink-dim); font-size: .94rem; }
+.step p:last-child { margin-bottom: 0; }
+.step .sub { font-size: .87rem; color: var(--ink-faint); margin-top: 12px; margin-bottom: 0; }
+
+/* ── footer ───────────────────────────────────────────── */
+footer { border-top: 1px solid var(--line-soft); margin-top: 40px; }
+.foot-inner {
+  max-width: 1080px; margin: 0 auto; padding: 30px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; flex-wrap: wrap;
+}
+.foot-inner > div { display: flex; align-items: center; gap: 10px; }
+.foot-inner img { border-radius: 6px; }
+.foot-inner nav { display: flex; gap: 20px; flex-wrap: wrap; }
+.foot-inner a { color: var(--ink-dim); text-decoration: none; font-size: .9rem; }
+.foot-inner a:hover { color: var(--ink); }
+
+/* ── responsive ───────────────────────────────────────── */
+@media (max-width: 720px) {
+  section { padding: 52px 20px; }
+  .nav { padding: 16px 20px; }
+  .nav nav a { padding: 6px 9px; font-size: .88rem; }
+  .step { grid-template-columns: 1fr; gap: 12px; }
+  .diagram { font-size: .62rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .btn:hover, .grid article:hover { transform: none; }
+}

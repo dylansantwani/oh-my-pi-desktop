@@ -1,0 +1,65 @@
+{
+  "name": "oh-my-pi-desktop",
+  "version": "0.1.0",
+  "description": "Desktop chat client for the Oh My Pi coding agent",
+  "main": "out/main/index.js",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "homepage": "https://oh-my-pi-desktop.pulse-core.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dylansantwani/oh-my-pi-desktop.git"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen:icon": "node scripts/gen-icon.mjs",
+    "dist": "electron-vite build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "lucide-react": "^1.28.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "sharp": "^0.35.3",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "@noble/hashes": "1.8.0"
+  },
+  "build": {
+    "appId": "com.ohmy.pi.desktop",
+    "productName": "Oh My Pi Desktop",
+    "directories": { "output": "dist" },
+    "files": ["out/**"],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "Oh My Pi Desktop"
+    }
+  }
+}

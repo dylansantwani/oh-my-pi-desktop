@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oh My Pi Desktop — a desktop client for the omp coding agent</title>
+<meta name="description" content="A Windows desktop chat client for the Oh My Pi coding agent. Streaming markdown, tool-call cards, todos, and per-project sessions over omp's RPC protocol.">
+<link rel="icon" href="assets/icon.png" type="image/png">
+<meta property="og:title" content="Oh My Pi Desktop">
+<meta property="og:description" content="A desktop chat client for the Oh My Pi coding agent. Not a terminal wrapper — a real RPC client.">
+<meta property="og:image" content="assets/screenshot.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://oh-my-pi-desktop.pulse-core.com">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="glow" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="#top">
+    <img src="assets/icon.png" alt="" width="30" height="30">
+    <span>Oh My Pi Desktop</span>
+  </a>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#install">Install</a>
+    <a class="ghost" href="https://github.com/dylansantwani/oh-my-pi-desktop">GitHub&nbsp;↗</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <img class="hero-icon" src="assets/icon.png" alt="Oh My Pi Desktop icon" width="104" height="104">
+    <p class="eyebrow">Windows desktop app · v0.1.0 · MIT</p>
+    <h1>A desktop client for the <span class="grad">Oh My Pi</span> coding agent.</h1>
+    <p class="lede">
+      <code>omp</code> ships with a terminal TUI and an RPC mode. This is the GUI —
+      an Electron app that drives <code>omp --mode rpc</code> as a child process and renders
+      the whole conversation: streaming markdown, tool-call cards, todos, and sessions.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/dylansantwani/oh-my-pi-desktop/releases">Download for Windows</a>
+      <a class="btn" href="https://github.com/dylansantwani/oh-my-pi-desktop">View source</a>
+    </div>
+    <p class="fineprint">Requires <code>omp</code> on your PATH. The installer is unsigned in v1 — SmartScreen will warn on first run.</p>
+  </section>
+
+  <section class="shot">
+    <div class="shot-frame">
+      <img src="assets/screenshot.png" alt="The Oh My Pi Desktop window showing the onboarding screen with a Choose project button" loading="lazy">
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="band-inner">
+      <p><strong>Not a terminal wrapper.</strong> No PTY, no ANSI parsing, no screen scraping. It speaks
+      <code>omp</code>'s newline-delimited JSON protocol directly — framed, id-correlated, with v2 lossless chunking.</p>
+    </div>
+  </section>
+
+  <section id="features">
+    <h2>What it does</h2>
+    <div class="grid">
+      <article><h3><span class="ico">💬</span> Streaming chat</h3><p>Assistant output as GFM markdown with syntax-highlighted code blocks and copy buttons. Deltas batch through <code>requestAnimationFrame</code>, so a fast stream doesn't jank the UI.</p></article>
+      <article><h3><span class="ico">🔧</span> Tool-call cards</h3><p>Every tool execution becomes an inline card — name, status, collapsible pretty-printed arguments, and the result or error excerpt, in transcript order.</p></article>
+      <article><h3><span class="ico">📁</span> Sessions per project</h3><p>Pick a project directory and the app groups sessions by the <code>cwd</code> in each session file's header. New, resume, rename, export to HTML.</p></article>
+      <article><h3><span class="ico">📜</span> Incremental history</h3><p>Most recent page first, then load older through cursor pagination. No monolithic history fetch, however long the session ran.</p></article>
+      <article><h3><span class="ico">🎛</span> Mid-turn control</h3><p>Abort, steer with an interrupting message, or queue a follow-up for after the turn. Plus model picker, thinking level, and fast mode.</p></article>
+      <article><h3><span class="ico">♻️</span> Survives crashes</h3><p>If the agent dies you get a banner, and it restarts on the same project and session with history replayed. The transcript is not lost.</p></article>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <h2>How it fits together</h2>
+    <p class="section-lede">Three layers, one responsibility each. The renderer is a pure projection of events — no agent logic, no filesystem access, no Node.</p>
+    <pre class="diagram"><code>┌─────────────────────────────────────────────────────────┐
+│ Renderer (React + Vite, Chromium)                       │
+│  Chat transcript · tool-call cards · todos · sessions   │
+└───────────────▲─────────────────────────────────────────┘
+                │ contextBridge IPC (window.omp, typed)
+┌───────────────┴─────────────────────────────────────────┐
+│ Electron main (Node)                                    │
+│  RPC client (JSONL framing, id correlation, v2 chunks)  │
+│  omp process lifecycle · session store · window mgmt    │
+└───────────────▲─────────────────────────────────────────┘
+                │ stdin/stdout JSONL
+┌───────────────┴─────────────────────────────────────────┐
+│ omp --mode rpc [--cwd &lt;project&gt;]  (child process)       │
+└─────────────────────────────────────────────────────────┘</code></pre>
+    <div class="note">
+      <strong>It never touches your credentials.</strong> Auth stays in <code>omp</code>'s own store at
+      <code>~/.omp/agent</code>. The app spawns a process and speaks a protocol to it, nothing more.
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Get it running</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="num">1</span>
+        <div>
+          <h3>Have <code>omp</code> installed</h3>
+          <p>On your PATH, or at <code>~/.bun/bin/omp.exe</code>. The app detects both, and offers a manual path if neither is found.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="num">2</span>
+        <div>
+          <h3>Install the app</h3>
+          <p>Download the NSIS installer from releases — or build it yourself:</p>
+          <pre><code>npm install
+npm run dist</code></pre>
+          <p class="sub">Outputs <code>dist/Oh My Pi Desktop Setup 0.1.0.exe</code> and a portable <code>dist/win-unpacked/</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="num">3</span>
+        <div>
+          <h3>Pick a project</h3>
+          <p>On first run, choose a directory. The agent runs there, and the app remembers it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="dev">
+    <h2>Development</h2>
+    <pre><code>npm run dev          <span class="c"># electron-vite dev server + app window</span>
+npm test             <span class="c"># unit tests against a mock omp process</span>
+RUN_E2E=1 npm test   <span class="c"># + integration against the real omp</span></code></pre>
+    <p class="section-lede">The unit tests use a mock <code>omp</code>: a Node script emitting canned JSONL — ready frame,
+    v2 negotiation, response correlation, streaming deltas, tool events, and a chunked frame. That covers the
+    protocol without needing a model.</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="foot-inner">
+    <div>
+      <img src="assets/icon.png" alt="" width="26" height="26">
+      <strong>Oh My Pi Desktop</strong>
+    </div>
+    <nav>
+      <a href="https://github.com/dylansantwani/oh-my-pi-desktop">GitHub</a>
+      <a href="https://github.com/dylansantwani/oh-my-pi-desktop/releases">Releases</a>
+      <a href="https://github.com/dylansantwani/oh-my-pi-desktop/blob/main/LICENSE">MIT License</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
