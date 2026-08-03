@@ -114,6 +114,44 @@ findings are fixed and verified (17/17 unit tests, both tsconfig typechecks,
 8. **`clearProject` dead surface** — removed the unused `ProjectMemory.clear()`
    method (and its test assertion); remember/recall remain.
 
+## v1.2 — Windows spawn fix + renderer component harness (2026-08-03)
+
+Shipped on top of v1.1 (commits `9a2ddec`, `4eac155`, plus this pass):
+
+1. **Windows `omp` resolution bug (user-reported: "bunch of errors" on every
+   use)** — this machine installs `omp` as `.cmd` shims (npm/bun, resolving to
+   `@oh-my-pi/pi-coding-agent` via bun), but `findOmp()` only probed
+   `.exe`/bare names and `child_process.spawn` cannot run `.cmd` files →
+   ENOENT, agent never connected, every IPC call threw "Agent not connected".
+   Fixes:
+   - `omp-detect.ts` — explicit `.cmd` candidates + `where omp` PATH lookup,
+     validated with `--version` under `cmd.exe`; resolves to
+     `C:\Users\Dylan\.local\bin\omp.cmd` here.
+   - `rpc-client.ts` — `.cmd`/`.bat` shims spawn via
+     `cmd.exe /d /s /c ""<bin>" --mode rpc --cwd "<project>""` with
+     `windowsVerbatimArguments: true` (Node escapes embedded quotes into `\"`
+     otherwise; `shell: true` would concatenate args unescaped and break on
+     spaced project paths). Spawn `'error'` now rejects the ready handshake
+     fast instead of an unhandled-event crash / 15 s hang.
+   - `TopBar.tsx` — `get_models` only fires once `status === 'connected'`
+     (was spamming handler errors on every mount).
+   - Verified end-to-end against real `omp` 17.2.6: ready frame + v2
+     negotiation + `get_available_models`/`get_state` round-trip; live boot
+     shows `[host] connected via C:\Users\Dylan\.local\bin\omp.cmd`.
+2. **Connect hardening** — `AgentHost.connect()` dedupes concurrent connects
+   (React StrictMode double-mount was disposing a live client mid-handshake);
+   `AgentHost` now gets `onLog` (spawn errors were silently swallowed);
+   Composer disables input until connected (typing during the few-second
+   auto-connect used to throw "Agent not connected").
+3. **Component-test harness** — jsdom + @testing-library/react (new
+   devDeps), `test/setup-renderer.ts` stubs `window.omp` + `scrollIntoView`,
+   vitest `globals: true` + automatic JSX. New
+   `test/renderer/composer.test.tsx` (6 tests: offline disable, send,
+   Enter-while-streaming → followUp, Interrupt → steer, Abort) and
+   `test/renderer/transcript.test.tsx` (4 tests: recovery-hint debounce,
+   hide-on-reply, hide-while-streaming, hide-after-assistant-message).
+   Suite now **27 passed / 2 skipped** (29 total).
+
 ## Build / run instructions
 
 See `oh-my-pi-desktop/README.md`:
@@ -142,10 +180,14 @@ See `oh-my-pi-desktop/README.md`:
 - Done: the 8 carried-forward findings were triaged and fixed in the v1.1 fix
   pass (see "Carried-forward findings — RESOLVED" above); Enter-while-streaming
   and negotiate-failure handling shipped in that pass.
+- Done (v1.2): Windows `.cmd` shim resolution + spawn hardening (the
+  user-reported "bunch of errors" bug), connect dedupe + composer offline
+  guard, and the component-test harness — recovery hint and
+  Enter-while-streaming routing now have direct jsdom coverage
+  (`test/renderer/`, suite 27/2).
 - Optional: clean up the worktree (`git worktree remove
   ../claude-omp-desktop`, `git branch -d omp-desktop`) once the sync is
   confirmed committed here.
-- Remaining v1.1 candidates: code signing (SmartScreen), auto-updater
-  (electron-updater + a release feed), and a component-test harness (jsdom +
-  @testing-library/react) so renderer logic like the recovery hint and
-  Enter-while-streaming routing get direct coverage.
+- Remaining v1.2 candidates: code signing (SmartScreen — needs a cert) and
+  auto-updater (electron-updater + a release feed — needs hosting); both are
+  blocked on external infrastructure, not code.

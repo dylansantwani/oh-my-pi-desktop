@@ -164,7 +164,7 @@ site/           source of oh-my-pi-desktop.pulse-core.com (static, no build step
 ```bash
 npm install
 npm run dev          # electron-vite dev server + app window
-npm test             # unit tests against a mock omp process
+npm test             # unit tests (protocol against a mock omp + jsdom component tests)
 RUN_E2E=1 npm test   # + integration tests against the real omp
 npm run gen:icon     # regenerate the icon set from the 512px source
 ```

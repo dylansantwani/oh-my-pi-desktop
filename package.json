@@ -30,6 +30,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
     "@types/node": "^26.1.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
@@ -37,6 +39,7 @@
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "jsdom": "^30.0.1",
     "sharp": "^0.35.3",
     "typescript": "^7.0.2",
     "vite": "^7.3.6",
@@ -48,11 +51,22 @@
   "build": {
     "appId": "com.ohmy.pi.desktop",
     "productName": "Oh My Pi Desktop",
-    "directories": { "output": "dist" },
-    "files": ["out/**"],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**"
+    ],
     "win": {
       "icon": "build/icon.png",
-      "target": [{ "target": "nsis", "arch": ["x64"] }]
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
