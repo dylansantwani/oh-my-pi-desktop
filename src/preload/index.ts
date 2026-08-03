@@ -33,7 +33,9 @@ const api: OmpApi = {
   uiResponse: (id, value, confirmed, cancelled) => ipcRenderer.invoke('omp:ui_response', id, value, confirmed, cancelled),
   onEvent: (cb) => subscribe('omp:event', cb),
   onUiRequest: (cb) => subscribe('omp:ui_request', cb),
-  onStatus: (cb) => subscribe('omp:status', cb)
+  onStatus: (cb) => subscribe('omp:status', cb),
+  onUpdateStatus: (cb) => subscribe('omp:update_status', cb),
+  installUpdate: () => ipcRenderer.invoke('omp:update_install')
 }
 
 contextBridge.exposeInMainWorld('omp', api)

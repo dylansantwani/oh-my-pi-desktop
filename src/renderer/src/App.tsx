@@ -8,6 +8,7 @@ import { StatusBar } from './components/StatusBar'
 import { UiRequestModal } from './components/UiRequestModal'
 import { Toasts } from './components/Toasts'
 import { Onboarding } from './components/Onboarding'
+import { UpdateBanner } from './components/UpdateBanner'
 
 export default function App(): React.JSX.Element {
   const project = useAppStore((s) => s.project)
@@ -32,6 +33,7 @@ export default function App(): React.JSX.Element {
       </div>
       <StatusBar />
       {project === null && status === 'offline' && <Onboarding />}
+      <UpdateBanner />
       <UiRequestModal />
       <Toasts />
     </div>

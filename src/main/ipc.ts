@@ -3,7 +3,7 @@ import { AgentHost } from './agent-host'
 import { scanSessions } from './session-scanner'
 import type { ProjectMemory } from './session-store'
 
-export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: string): void {
+export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: string, installUpdate: () => void): void {
   const send = (channel: string, payload: unknown): void => {
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send(channel, payload)
@@ -58,6 +58,7 @@ export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: str
   ipcMain.handle('omp:ui_response', (_e, id: string, value: unknown, confirmed?: boolean, cancelled?: boolean) => {
     host.client?.sendRaw({ type: 'extension_ui_response', id, value, confirmed, cancelled })
   })
+  ipcMain.handle('omp:update_install', () => installUpdate())
 }
 
 export function defaultSessionDir(): string {

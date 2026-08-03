@@ -4,6 +4,7 @@ import { AgentHost } from './agent-host'
 import { registerIpc } from './ipc'
 import { ProjectMemory } from './session-store'
 import { findOmp } from './omp-detect'
+import { setupUpdater, installUpdate, type UpdateStatus } from './updater'
 
 const isDev = !app.isPackaged
 
@@ -54,7 +55,12 @@ if (!gotLock) {
     const memory = new ProjectMemory(app.getPath('userData'))
     const ompPath = findOmp() ?? 'omp'
     const host = new AgentHost({ ompPath, onLog: (msg) => console.log('[omp]', msg) })
-    registerIpc(host, memory, ompPath)
+    registerIpc(host, memory, ompPath, installUpdate)
+    setupUpdater((status: UpdateStatus) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('omp:update_status', status)
+      }
+    })
     createWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

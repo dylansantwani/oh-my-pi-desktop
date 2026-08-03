@@ -62,8 +62,12 @@ npm install
 npm run dist
 ```
 
-That produces `dist/Oh My Pi Desktop Setup 0.1.0.exe` (a per-user NSIS
-installer) plus an unpacked portable folder at `dist/win-unpacked/`.
+That produces `dist/Oh My Pi Desktop Setup 0.1.1.exe` (a per-user NSIS
+installer) plus an unpacked portable folder at `dist/win-unpacked/`. Local
+builds never publish (`--publish never`); to cut a release, push a version
+tag and run `electron-builder --win nsis --publish always` with `GH_TOKEN`
+set — that uploads the installer + `latest.yml` feed that the auto-updater
+consumes.
 
 > ⚠️ **The installer is unsigned in v1.** Windows SmartScreen will warn on first
 > run — "More info" → "Run anyway". Code signing is a v2 item.
@@ -76,6 +80,7 @@ installer) plus an unpacked portable folder at `dist/win-unpacked/`.
 |---|---|
 | 💬 **Streaming chat** | Assistant output rendered as GFM markdown with syntax-highlighted code blocks and copy buttons. Deltas are batched through `requestAnimationFrame` so a fast stream doesn't jank the UI. |
 | 🔧 **Tool-call cards** | Every `tool_execution_*` event becomes an inline card: tool name, status, collapsible pretty-printed arguments, and the result or error excerpt. |
+| 🔄 **Auto-update** | Checks GitHub Releases on start and every 4 h; downloads in the background and offers "Restart to install" when ready. |
 | 📁 **Sessions per project** | Pick a project directory; the app groups sessions by the `cwd` in each session file's header. New, resume, rename, and export to HTML. |
 | 📜 **Incremental history** | Most recent page first, then "load older" via `get_messages_page` cursors — no monolithic history fetch. |
 | 🎛 **Mid-turn control** | Abort, steer with an interrupting message, or queue a follow-up for after the turn. Model picker, thinking level, and fast mode toggle. |
@@ -87,7 +92,10 @@ installer) plus an unpacked portable folder at `dist/win-unpacked/`.
 
 No embedded terminal, file explorer, diff viewer, or git panel. No concurrent
 multi-session streaming — `omp` RPC hosts one active session per process, so
-navigation is switch-then-view. No macOS or Linux builds. No auto-updater.
+navigation is switch-then-view. No macOS or Linux builds. No code signing
+(SmartScreen warns on first run) — the installer itself is unsigned, but the
+auto-update channel uses the GitHub-hosted `latest.yml` and is not tied to
+signing.
 
 ---
 

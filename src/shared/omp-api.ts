@@ -25,4 +25,14 @@ export interface OmpApi {
   onEvent(cb: (frame: Record<string, unknown>) => void): () => void
   onUiRequest(cb: (req: Record<string, unknown>) => void): () => void
   onStatus(cb: (status: string) => void): () => void
+  onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
+  installUpdate(): Promise<void>
 }
+
+export type UpdateStatus =
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | { state: 'not-available' }
+  | { state: 'downloading'; percent: number }
+  | { state: 'downloaded'; version: string }
+  | { state: 'error'; message: string }

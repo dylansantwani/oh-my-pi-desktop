@@ -151,6 +151,17 @@ Shipped on top of v1.1 (commits `9a2ddec`, `4eac155`, plus this pass):
    `test/renderer/transcript.test.tsx` (4 tests: recovery-hint debounce,
    hide-on-reply, hide-while-streaming, hide-after-assistant-message).
    Suite now **27 passed / 2 skipped** (29 total).
+4. **Auto-updater (v0.1.1)** — `electron-updater` wired in
+   `src/main/updater.ts` (packaged-only; GitHub Releases feed via
+   `publish` config; check on start + every 4 h, auto-download, "Restart to
+   install" banner in the renderer via `omp:update_status` /
+   `omp:update_install`). Local `npm run dist` uses `--publish never`;
+   releasing = tag + `electron-builder --publish always` with `GH_TOKEN`.
+   Gotcha fixed during verification: `electron-updater` is CJS and the main
+   process is ESM, so `externalizeDepsPlugin({ exclude: ['electron-updater'] })`
+   bundles it into `out/main/index.js` — externalized, the named import
+   crashes the packaged app at boot ("Named export 'autoUpdater' not found").
+   Packaged smoke (v0.1.1): window up, 4 processes, title "Oh My Pi Desktop".
 
 ## Build / run instructions
 
@@ -188,6 +199,5 @@ See `oh-my-pi-desktop/README.md`:
 - Optional: clean up the worktree (`git worktree remove
   ../claude-omp-desktop`, `git branch -d omp-desktop`) once the sync is
   confirmed committed here.
-- Remaining v1.2 candidates: code signing (SmartScreen — needs a cert) and
-  auto-updater (electron-updater + a release feed — needs hosting); both are
-  blocked on external infrastructure, not code.
+- Remaining v1.2 candidates: code signing (SmartScreen — needs a cert) — the
+  only item left; the auto-updater (GitHub Releases feed) shipped in v0.1.1.
