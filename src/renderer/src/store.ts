@@ -24,6 +24,7 @@ interface AppState {
   tokensPerSecond: number | null
   sessionName: string
   todos: TodoPhase[]
+  paletteOpen: boolean
   sendPrompt: (text: string) => Promise<void>
   abort: () => Promise<void>
   steer: (text: string) => Promise<void>
@@ -38,6 +39,8 @@ interface AppState {
   switchSession: (path: string) => Promise<void>
   newSession: () => Promise<void>
   renameSession: (name: string) => Promise<void>
+  exportHtml: () => Promise<void>
+  setPaletteOpen: (open: boolean) => Promise<void>
   loadOlder: () => Promise<void>
   answerUi: (id: string, value: unknown, confirmed?: boolean, cancelled?: boolean) => Promise<void>
   toast: (text: string, kind?: 'error' | 'info') => void
@@ -63,6 +66,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   tokensPerSecond: null,
   sessionName: '',
   todos: [],
+  paletteOpen: false,
 
   toast: (text, kind = 'info') => {
     const id = ++toastSeq
@@ -213,6 +217,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (e) {
       get().toast(`Rename failed: ${(e as Error).message}`, 'error')
     }
+  },
+
+  exportHtml: async () => {
+    try {
+      await api.exportHtml()
+      get().toast('Session exported to HTML', 'info')
+    } catch (e) {
+      get().toast(`Export failed: ${(e as Error).message}`, 'error')
+    }
+  },
+
+  setPaletteOpen: async (open) => {
+    set({ paletteOpen: open })
   },
 
   loadOlder: async () => {

@@ -9,6 +9,7 @@ import { UiRequestModal } from './components/UiRequestModal'
 import { Toasts } from './components/Toasts'
 import { Onboarding } from './components/Onboarding'
 import { UpdateBanner } from './components/UpdateBanner'
+import { CommandPalette } from './components/CommandPalette'
 
 export default function App(): React.JSX.Element {
   const project = useAppStore((s) => s.project)
@@ -20,6 +21,31 @@ export default function App(): React.JSX.Element {
         await useAppStore.getState().connect(remembered)
       }
     })()
+  }, [])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.ctrlKey || e.metaKey)) {
+        if (e.key === 'Escape') void useAppStore.getState().setPaletteOpen(false)
+        return
+      }
+      const key = e.key.toLowerCase()
+      if (key === 'k') {
+        e.preventDefault()
+        void useAppStore.getState().setPaletteOpen(!useAppStore.getState().paletteOpen)
+      } else if (key === 'n') {
+        e.preventDefault()
+        void useAppStore.getState().newSession()
+      } else if (key === 'o') {
+        e.preventDefault()
+        void useAppStore.getState().pickProjectAndConnect()
+      } else if (key === 'l') {
+        e.preventDefault()
+        const ta = document.getElementById('composer-input') as HTMLTextAreaElement | null
+        if (ta && !ta.disabled) ta.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [])
   return (
     <div className="app">
@@ -34,6 +60,7 @@ export default function App(): React.JSX.Element {
       <StatusBar />
       {project === null && status === 'offline' && <Onboarding />}
       <UpdateBanner />
+      <CommandPalette />
       <UiRequestModal />
       <Toasts />
     </div>

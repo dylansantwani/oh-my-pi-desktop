@@ -1,4 +1,4 @@
-import { app, dialog, ipcMain, BrowserWindow } from 'electron'
+import { app, dialog, ipcMain, BrowserWindow, Notification } from 'electron'
 import { AgentHost } from './agent-host'
 import { scanSessions } from './session-scanner'
 import type { ProjectMemory } from './session-store'
@@ -10,7 +10,13 @@ export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: str
     }
   }
 
-  host.onEvent((frame) => send('omp:event', frame))
+  host.onEvent((frame) => {
+    send('omp:event', frame)
+    if (frame.type === 'agent_end' && !BrowserWindow.getFocusedWindow() && Notification.isSupported()) {
+      // The user is looking at another app — surface turn completion natively.
+      new Notification({ title: 'Oh My Pi', body: 'The agent finished its turn.' }).show()
+    }
+  })
   host.onUiRequest((req) => send('omp:ui_request', req))
   host.onStatus((status) => send('omp:status', status))
 

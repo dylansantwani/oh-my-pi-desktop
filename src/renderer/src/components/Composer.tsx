@@ -35,6 +35,7 @@ export function Composer(): React.JSX.Element {
   return (
     <form className="composer" onSubmit={submit}>
       <textarea
+        id="composer-input"
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {

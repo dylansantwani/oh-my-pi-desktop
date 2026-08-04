@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useAppStore } from '../store'
-import { RefreshCw, Zap, ZapOff } from 'lucide-react'
+import { RefreshCw, Zap, ZapOff, Command } from 'lucide-react'
 
 const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
@@ -66,6 +66,9 @@ export function TopBar(): React.JSX.Element {
           onClick={() => void setFastMode(!fastMode)}
         >
           {fastMode ? <Zap size={14} /> : <ZapOff size={14} />}
+        </button>
+        <button className="icon-btn" title="Commands (Ctrl+K)" onClick={() => void useAppStore.getState().setPaletteOpen(true)}>
+          <Command size={14} />
         </button>
         <button className="icon-btn" title="Refresh state" onClick={() => void useAppStore.getState().refreshState()}>
           <RefreshCw size={14} />

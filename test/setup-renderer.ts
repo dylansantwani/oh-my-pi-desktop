@@ -33,6 +33,8 @@ if (typeof window !== 'undefined') {
     uiResponse: vi.fn(async () => undefined),
     onEvent: vi.fn(() => () => {}),
     onUiRequest: vi.fn(() => () => {}),
-    onStatus: vi.fn(() => () => {})
+    onStatus: vi.fn(() => () => {}),
+    onUpdateStatus: vi.fn(() => () => {}),
+    installUpdate: vi.fn(async () => {})
   })
 }
