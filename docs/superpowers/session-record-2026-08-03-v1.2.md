@@ -45,6 +45,13 @@ installer built, packaged-app smoke verified. Committed and pushed to
   exe → auto-connected to `~/omp-workspace` (recall fallback path), right
   panel rendered, composer enabled. Prompt sent through the UI, streaming
   reply rendered.
+- **Schema finding (fixed during smoke):** real `omp` emits
+  `tool_execution_start` with a **`toolName`** field (`write`), while the mock
+  fixture used `name`. Extraction now reads `toolName` with `name` fallback —
+  without this, write tools were tracked but never marked modified. Covered by
+  a regression test. The agent wrote + read back `hello.txt` in the default
+  workspace; Files tab showed it with the **edited** badge, and the FileViewer
+  rendered its content through the sandboxed `omp:read_file` IPC.
 
 ## Process notes
 
