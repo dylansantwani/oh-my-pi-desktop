@@ -14,6 +14,8 @@ if (typeof window !== 'undefined') {
     pickProject: vi.fn(async () => null),
     recallProject: vi.fn(async () => null),
     rememberProject: vi.fn(async () => {}),
+    defaultProject: vi.fn(async () => 'C:\\proj'),
+    readFile: vi.fn(async () => ({ ok: true as const, content: '', size: 0 })),
     getOmpPath: vi.fn(async () => 'omp'),
     prompt: vi.fn(async () => undefined),
     steer: vi.fn(async () => undefined),

@@ -1,6 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useAppStore } from '../store'
+import { Check, Circle, Clock, Ban, X, ChevronDown, ChevronRight } from 'lucide-react'
 
+const STATUS_ICON: Record<string, React.JSX.Element> = {
+  pending: <Circle size={12} />,
+  in_progress: <Clock size={12} className="todo-spin" />,
+  completed: <Check size={12} />,
+  blocked: <Ban size={12} />,
+  dropped: <X size={12} />
+}
 const STATUS_CLASS: Record<string, string> = {
   pending: 'todo-pending',
   in_progress: 'todo-progress',
@@ -11,21 +19,42 @@ const STATUS_CLASS: Record<string, string> = {
 
 export function TodoPanel(): React.JSX.Element | null {
   const todos = useAppStore((s) => s.todos)
-  if (todos.length === 0) return null
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  if (todos.length === 0) return <div className="panel-empty">No tasks yet — ask the agent to plan something.</div>
   return (
     <div className="todo-panel">
-      <div className="sidebar-label">Todos</div>
-      {todos.map((phase) => (
-        <div key={phase.id} className="todo-phase">
-          <div className="todo-phase-name">{phase.name}</div>
-          {phase.tasks.map((t) => (
-            <div key={t.id} className={`todo-task ${STATUS_CLASS[t.status] ?? 'todo-pending'}`}>
-              <span className="todo-bullet" />
-              <span className="ellipsis">{t.content}</span>
-            </div>
-          ))}
-        </div>
-      ))}
+      {todos.map((phase) => {
+        const done = phase.tasks.filter((t) => t.status === 'completed').length
+        const isCollapsed = collapsed.has(phase.id)
+        return (
+          <div key={phase.id} className="todo-phase">
+            <button
+              className="todo-phase-name"
+              onClick={() =>
+                setCollapsed((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(phase.id)) next.delete(phase.id)
+                  else next.add(phase.id)
+                  return next
+                })
+              }
+            >
+              {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+              <span className="ellipsis">{phase.name}</span>
+              <span className="todo-progress-pill">
+                {done}/{phase.tasks.length}
+              </span>
+            </button>
+            {!isCollapsed &&
+              phase.tasks.map((t) => (
+                <div key={t.id} className={`todo-task ${STATUS_CLASS[t.status] ?? 'todo-pending'}`}>
+                  <span className="todo-status-icon">{STATUS_ICON[t.status] ?? <Circle size={12} />}</span>
+                  <span className="ellipsis">{t.content}</span>
+                </div>
+              ))}
+          </div>
+        )
+      })}
     </div>
   )
 }
