@@ -36,6 +36,11 @@ describe('extractFileRefs', () => {
     const [ref] = extractFileRefs(tool('custom_tool', { filePath: 'z.log' }), DIR)
     expect(ref.path).toBe('C:\\proj\\z.log')
   })
+  it('reads the real omp toolName field and marks write modified', () => {
+    const [ref] = extractFileRefs({ type: 'tool_execution_start', toolCallId: 'c1', toolName: 'write', args: { content: 'x', path: 'hello.txt' } }, DIR)
+    expect(ref.path).toBe('C:\\proj\\hello.txt')
+    expect(ref.modified).toBe(true)
+  })
   it('ignores non-string and empty path values', () => {
     expect(extractFileRefs(tool('read', { path: 42 }), DIR)).toEqual([])
     expect(extractFileRefs(tool('read', { path: '' }), DIR)).toEqual([])

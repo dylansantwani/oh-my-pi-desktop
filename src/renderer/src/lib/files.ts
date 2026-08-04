@@ -17,7 +17,8 @@ const FILE_KEYS = new Set(['path', 'file', 'filePath', 'file_path', 'filename'])
 
 export function extractFileRefs(ev: Record<string, unknown>, projectDir: string): FileRef[] {
   if (ev.type !== 'tool_execution_start') return []
-  const name = typeof ev.name === 'string' ? ev.name : ''
+  // Real omp emits toolName; the mock fixture uses name. Accept both.
+  const name = typeof ev.toolName === 'string' ? ev.toolName : typeof ev.name === 'string' ? ev.name : ''
   if (DIR_TOOLS.has(name)) return []
   const args = ev.args as Record<string, unknown> | undefined
   if (!args || typeof args !== 'object' || Array.isArray(args)) return []
