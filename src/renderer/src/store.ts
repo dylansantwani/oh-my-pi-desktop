@@ -114,7 +114,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       const st = (await api.getState()) as {
         model?: { provider: string; id: string }
         thinkingLevel?: string
-        messageCount?: number
         contextUsage?: { tokens: number; contextWindow: number; percent: number }
         tokensPerSecond?: number | null
         fastModeEnabled?: boolean

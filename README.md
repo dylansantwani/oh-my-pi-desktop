@@ -12,7 +12,7 @@ whole conversation: streaming markdown, tool-call cards, todos, and sessions.
 
 [![Website](https://img.shields.io/badge/site-oh--my--pi--desktop.pulse--core.com-60a5fa?style=flat-square)](https://oh-my-pi-desktop.pulse-core.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4ade80?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-64748b?style=flat-square)](package.json)
+[![Version](https://img.shields.io/badge/version-0.1.1-64748b?style=flat-square)](package.json)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-5b8c5a?style=flat-square)](#requirements)
 [![Electron](https://img.shields.io/badge/electron-43-47848f?style=flat-square)](package.json)
 [![React](https://img.shields.io/badge/react-19-61dafb?style=flat-square)](package.json)
@@ -48,7 +48,8 @@ wrapper: there is no PTY, no ANSI parsing, no screen scraping.
 
 - **Windows 10/11**
 - **`omp` on your PATH**, or installed at `~/.bun/bin/omp.exe`
-- **Node 22+ and npm** — for development only, not for running the installer
+- **Node ≥ 22.12.0 and npm** — for development only, not for running the installer.
+  Earlier 22.x fails the jsdom renderer tests with an ESM `require()` error; `engines` enforces the floor.
 
 ---
 
