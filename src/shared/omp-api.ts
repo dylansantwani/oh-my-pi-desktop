@@ -1,3 +1,5 @@
+export type ReadFileResult = { ok: true; content: string; size: number } | { ok: false; error: string }
+
 export interface OmpApi {
   connect(project: string): Promise<{ ok: true } | { ok: false; error: string }>
   disconnect(): Promise<void>
@@ -5,6 +7,8 @@ export interface OmpApi {
   pickProject(): Promise<string | null>
   recallProject(): Promise<string | null>
   rememberProject(cwd: string): Promise<void>
+  defaultProject(): Promise<string>
+  readFile(path: string): Promise<ReadFileResult>
   getOmpPath(): Promise<string>
   prompt(text: string): Promise<unknown>
   steer(text: string): Promise<unknown>

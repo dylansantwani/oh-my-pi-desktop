@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { homedir } from 'os'
 import { join } from 'path'
 
 export class ProjectMemory {
@@ -18,5 +19,14 @@ export class ProjectMemory {
   remember(cwd: string): void {
     mkdirSync(join(this.file, '..'), { recursive: true })
     writeFileSync(this.file, JSON.stringify({ cwd }, null, 2), 'utf8')
+  }
+  defaultProjectDir(): string {
+    const dir = join(homedir(), 'omp-workspace')
+    try {
+      mkdirSync(dir, { recursive: true })
+    } catch {
+      /* connect() surfaces the real failure if the dir is unusable */
+    }
+    return dir
   }
 }

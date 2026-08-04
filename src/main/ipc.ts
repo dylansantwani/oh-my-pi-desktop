@@ -1,6 +1,7 @@
 import { app, dialog, ipcMain, BrowserWindow, Notification } from 'electron'
 import { AgentHost } from './agent-host'
 import { scanSessions } from './session-scanner'
+import { readProjectFile } from './read-file'
 import type { ProjectMemory } from './session-store'
 
 export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: string, installUpdate: () => void): void {
@@ -39,6 +40,12 @@ export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: str
     return res.canceled ? null : res.filePaths[0] ?? null
   })
   ipcMain.handle('omp:recall_project', () => memory.recall())
+  ipcMain.handle('omp:default_project', () => memory.defaultProjectDir())
+  ipcMain.handle('omp:read_file', (_e, filePath: string) => {
+    const root = host.project
+    if (!root) return { ok: false as const, error: 'no project connected' }
+    return readProjectFile(root, filePath)
+  })
   ipcMain.handle('omp:remember_project', (_e, cwd: string) => {
     // Defensive: recall() already ignores corrupt files, so a bad write here is
     // worse than no write at all — only persist well-formed paths.
