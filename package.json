@@ -1,6 +1,6 @@
 {
   "name": "oh-my-pi-desktop",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Desktop chat client for the Oh My Pi coding agent",
   "main": "out/main/index.js",
   "type": "module",
