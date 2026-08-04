@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { api } from './api'
 import { applyEvent, pushUserMessage, type TranscriptMessage } from './lib/transcript'
 import { historyToTranscript } from './lib/history'
+import { extractFileRefs, mergeFileRefs, type FileRef } from './lib/files'
 
 export interface TodoTask { id: string; content: string; status: string }
 export interface TodoPhase { id: string; name: string; tasks: TodoTask[] }
@@ -25,6 +26,9 @@ interface AppState {
   sessionName: string
   todos: TodoPhase[]
   paletteOpen: boolean
+  rightTab: 'todos' | 'files' | 'context'
+  sessionFiles: FileRef[]
+  openFilePath: string | null
   sendPrompt: (text: string) => Promise<void>
   abort: () => Promise<void>
   steer: (text: string) => Promise<void>
@@ -41,6 +45,8 @@ interface AppState {
   renameSession: (name: string) => Promise<void>
   exportHtml: () => Promise<void>
   setPaletteOpen: (open: boolean) => Promise<void>
+  setRightTab: (tab: 'todos' | 'files' | 'context') => void
+  setOpenFile: (path: string | null) => void
   loadOlder: () => Promise<void>
   answerUi: (id: string, value: unknown, confirmed?: boolean, cancelled?: boolean) => Promise<void>
   toast: (text: string, kind?: 'error' | 'info') => void
@@ -67,6 +73,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessionName: '',
   todos: [],
   paletteOpen: false,
+  rightTab: 'todos',
+  sessionFiles: [],
+  openFilePath: null,
 
   toast: (text, kind = 'info') => {
     const id = ++toastSeq
@@ -192,7 +201,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   switchSession: async (path) => {
     try {
       await api.switchSession(path)
-      set({ activeSessionPath: path, messages: [], isStreaming: false, nextCursor: null })
+      set({ activeSessionPath: path, messages: [], isStreaming: false, nextCursor: null, sessionFiles: [], openFilePath: null })
       await get().loadOlder()
     } catch (e) {
       get().toast(`Switch failed: ${(e as Error).message}`, 'error')
@@ -202,7 +211,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   newSession: async () => {
     try {
       await api.newSession()
-      set({ activeSessionPath: null, messages: [], isStreaming: false, sessionName: '', nextCursor: null })
+      set({ activeSessionPath: null, messages: [], isStreaming: false, sessionName: '', nextCursor: null, sessionFiles: [], openFilePath: null })
     } catch (e) {
       get().toast(`New session failed: ${(e as Error).message}`, 'error')
     }
@@ -230,6 +239,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPaletteOpen: async (open) => {
     set({ paletteOpen: open })
   },
+
+  setRightTab: (tab) => set({ rightTab: tab }),
+
+  setOpenFile: (path) => set({ openFilePath: path }),
 
   loadOlder: async () => {
     const { nextCursor } = get()
@@ -284,6 +297,15 @@ api.onEvent((frame) => {
         ? (frame as { todos: TodoPhase[] }).todos
         : []
     useAppStore.setState({ todos: phases })
+  }
+  if (type === 'tool_execution_start') {
+    const project = useAppStore.getState().project
+    if (project) {
+      const refs = extractFileRefs(frame, project)
+      if (refs.length > 0) {
+        useAppStore.setState((prev) => ({ sessionFiles: mergeFileRefs(prev.sessionFiles, refs) }))
+      }
+    }
   }
   if (type === 'model_changed') useAppStore.setState({ model: (frame as { model?: { provider: string; id: string } }).model ?? null })
   if (type === 'thinking_level_changed') useAppStore.setState({ thinkingLevel: String((frame as { level?: string }).level ?? s.thinkingLevel) })
