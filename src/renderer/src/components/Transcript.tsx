@@ -7,6 +7,7 @@ export function Transcript(): React.JSX.Element {
   const isStreaming = useAppStore((s) => s.isStreaming)
   const bottomRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
+  const [showJump, setShowJump] = useState(false)
   // A user bubble with no agent reply (rejected prompt) should offer recovery,
   // but only once it's clearly stale — agent_start usually lands within a beat.
   const [showRecoveryHint, setShowRecoveryHint] = useState(false)
@@ -27,6 +28,13 @@ export function Transcript(): React.JSX.Element {
   const onScroll = (e: React.UIEvent<HTMLDivElement>): void => {
     const el = e.currentTarget
     pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    setShowJump(!pinned.current && messages.length > 0)
+  }
+
+  const jumpToBottom = (): void => {
+    pinned.current = true
+    setShowJump(false)
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
@@ -44,6 +52,11 @@ export function Transcript(): React.JSX.Element {
       ))}
       {isStreaming && <div className="streaming-dot" />}
       <div ref={bottomRef} />
+      {showJump && (
+        <button className="jump-btn" onClick={jumpToBottom} title="Scroll to bottom">
+          ↓
+        </button>
+      )}
     </div>
   )
 }

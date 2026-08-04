@@ -1,8 +1,25 @@
-import React from 'react'
+import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import 'highlight.js/styles/github-dark.css'
+
+function CopyButton({ children }: { children: React.ReactNode }): React.JSX.Element {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      className={`copy-btn ${copied ? 'copied' : ''}`}
+      onClick={() => {
+        void navigator.clipboard.writeText(extractText(children)).then(() => {
+          setCopied(true)
+          setTimeout(() => setCopied(false), 1500)
+        })
+      }}
+    >
+      {copied ? 'Copied ✓' : 'Copy'}
+    </button>
+  )
+}
 
 export function Markdown({ text }: { text: string }): React.JSX.Element {
   return (
@@ -13,12 +30,7 @@ export function Markdown({ text }: { text: string }): React.JSX.Element {
         components={{
           pre: ({ children }) => (
             <div className="code-block">
-              <button
-                className="copy-btn"
-                onClick={() => void navigator.clipboard.writeText(extractText(children))}
-              >
-                copy
-              </button>
+              <CopyButton>{children}</CopyButton>
               <pre>{children}</pre>
             </div>
           )

@@ -18,6 +18,7 @@ export function MessageView({ message }: { message: TranscriptMessage }): React.
       ) : (
         <div className="bubble">
           <Markdown text={message.text} />
+          {!message.complete && <span className="caret" aria-hidden="true" />}
           {message.toolCalls.map((t) => (
             <ToolCallCard key={t.id} tool={t} />
           ))}
