@@ -29,4 +29,49 @@ describe('applyEvent', () => {
     const m = applyEvent(withUser, { type: 'agent_start' })
     expect(m).toHaveLength(2)
   })
+
+  it('never appends toolcall_delta JSON to visible text (real omp schema)', () => {
+    let m = applyEvent(empty, { type: 'message_start', message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'message_update', assistantMessageEvent: { type: 'thinking_delta', delta: 'The user' }, message: { role: 'assistant', content: [] } })
+    // toolcall deltas stream the tool-call JSON chunk by chunk
+    for (const chunk of ['{"i": "', 'Creating note', '.txt"}']) {
+      m = applyEvent(m, { type: 'message_update', assistantMessageEvent: { type: 'toolcall_delta', delta: chunk }, message: { role: 'assistant', content: [] } })
+    }
+    m = applyEvent(m, { type: 'message_end', message: { role: 'assistant', content: [] } })
+    expect(m[0].text).toBe('')
+    expect(m[0].thinking).toBe('The user')
+    expect(m[0].complete).toBe(true)
+  })
+
+  it('ignores toolResult-role message frames entirely', () => {
+    let m = applyEvent(empty, { type: 'message_start', message: { role: 'toolResult', toolCallId: 't1' } })
+    expect(m).toHaveLength(0)
+    m = applyEvent(m, { type: 'message_end', message: { role: 'toolResult', toolCallId: 't1' } })
+    expect(m).toHaveLength(0)
+  })
+
+  it('attaches a tool card to the last assistant message even after message_end', () => {
+    let m = applyEvent(empty, { type: 'message_start', message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'message_end', message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'tool_execution_start', toolCallId: 't9', name: 'write', args: { path: 'x' } })
+    expect(m).toHaveLength(1)
+    expect(m[0].toolCalls[0]).toMatchObject({ id: 't9', status: 'running' })
+  })
+
+  it('keeps a complete tool-using turn in one assistant message (thinking + card + reply)', () => {
+    let m = applyEvent(empty, { type: 'message_start', message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'message_update', assistantMessageEvent: { type: 'thinking_delta', delta: 'think' }, message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'message_update', assistantMessageEvent: { type: 'toolcall_delta', delta: '{}' }, message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'message_end', message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'tool_execution_start', toolCallId: 't1', name: 'write', args: { path: 'x' } })
+    m = applyEvent(m, { type: 'message_start', message: { role: 'toolResult', toolCallId: 't1' } })
+    m = applyEvent(m, { type: 'message_end', message: { role: 'toolResult', toolCallId: 't1' } })
+    m = applyEvent(m, { type: 'message_start', message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'message_update', assistantMessageEvent: { type: 'text_delta', delta: 'Done' }, message: { role: 'assistant', content: [] } })
+    m = applyEvent(m, { type: 'message_end', message: { role: 'assistant', content: [] } })
+    expect(m).toHaveLength(2)
+    expect(m[0]).toMatchObject({ text: '', thinking: 'think', complete: true })
+    expect(m[0].toolCalls).toHaveLength(1)
+    expect(m[1]).toMatchObject({ text: 'Done', complete: true })
+  })
 })

@@ -34,17 +34,22 @@ export function applyEvent(messages: TranscriptMessage[], ev: Record<string, unk
     case 'agent_start':
     case 'turn_start':
     case 'message_start': {
-      // message_start echoes user messages too — only open an assistant message.
+      // message_start echoes user messages and tool results too — only open
+      // an assistant message (tool results surface via the tool cards).
       const msg = ev.message as { role?: string } | undefined
-      if (msg?.role === 'user') return messages
+      if (msg?.role === 'user' || msg?.role === 'toolResult') return messages
       const open = lastAssistant(messages)
       if (open) return messages
       return [...messages, newAssistant(ev)]
     }
     case 'message_update': {
       const msg = ev.message as { role?: string } | undefined
-      if (msg?.role === 'user') return messages
+      if (msg?.role === 'user' || msg?.role === 'toolResult') return messages
       const ae = ev.assistantMessageEvent as Record<string, unknown> | undefined
+      // Only text/thinking deltas carry visible content. toolcall_* deltas
+      // stream tool-call JSON (real omp) — the tool cards render those instead.
+      const evType = ae?.type
+      if (evType !== 'text_delta' && evType !== 'thinking_delta') return messages
       const delta = typeof ae?.delta === 'string' ? ae.delta : ''
       if (!delta) return messages
       const open = lastAssistant(messages)
@@ -52,7 +57,7 @@ export function applyEvent(messages: TranscriptMessage[], ev: Record<string, unk
       const idx = messages.indexOf(open)
       const next = [...messages]
       // thinking_delta frames stream the model's reasoning; keep it out of text.
-      if (ae?.type === 'thinking_delta') {
+      if (evType === 'thinking_delta') {
         next[idx] = { ...open, thinking: open.thinking + delta }
       } else {
         next[idx] = { ...open, text: open.text + delta }
@@ -61,9 +66,10 @@ export function applyEvent(messages: TranscriptMessage[], ev: Record<string, unk
     }
     case 'message_end':
     case 'agent_end': {
-      // message_end fires for the user echo too — only complete assistant turns.
+      // message_end fires for user echoes and tool results too — only complete
+      // assistant turns.
       const msg = ev.message as { role?: string } | undefined
-      if (msg?.role === 'user') return messages
+      if (msg?.role === 'user' || msg?.role === 'toolResult') return messages
       const open = lastAssistant(messages)
       if (!open) return messages
       const idx = messages.indexOf(open)
@@ -78,11 +84,19 @@ export function applyEvent(messages: TranscriptMessage[], ev: Record<string, unk
         args: ev.args ?? {},
         status: 'running'
       }
-      const open = lastAssistant(messages)
-      if (!open) return [...messages, newAssistant(ev, [card])]
-      const idx = messages.indexOf(open)
+      // Attach to the last assistant message even if already complete (real omp
+      // completes the toolcall message before firing tool_execution_start), so
+      // thinking + tool card stay in one block instead of a stray bubble.
+      let idx = -1
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === 'assistant') {
+          idx = i
+          break
+        }
+      }
+      if (idx === -1) return [...messages, newAssistant(ev, [card])]
       const next = [...messages]
-      next[idx] = { ...open, toolCalls: [...open.toolCalls, card] }
+      next[idx] = { ...next[idx], toolCalls: [...next[idx].toolCalls, card] }
       return next
     }
     case 'tool_execution_update': {
