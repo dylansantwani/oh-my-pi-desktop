@@ -5,20 +5,24 @@ import { TopBar } from './components/TopBar'
 import { Transcript } from './components/Transcript'
 import { Composer } from './components/Composer'
 import { StatusBar } from './components/StatusBar'
+import { RightPanel } from './components/RightPanel'
+import { FileViewer } from './components/FileViewer'
 import { UiRequestModal } from './components/UiRequestModal'
 import { Toasts } from './components/Toasts'
-import { Onboarding } from './components/Onboarding'
 import { UpdateBanner } from './components/UpdateBanner'
 import { CommandPalette } from './components/CommandPalette'
 
 export default function App(): React.JSX.Element {
-  const project = useAppStore((s) => s.project)
-  const status = useAppStore((s) => s.status)
   useEffect(() => {
     void (async () => {
       const remembered = await window.omp.recallProject()
-      if (remembered) {
-        await useAppStore.getState().connect(remembered)
+      const target = remembered ?? (await window.omp.defaultProject())
+      if (!target) return
+      await useAppStore.getState().connect(target)
+      if (!remembered) {
+        useAppStore
+          .getState()
+          .toast('Connected to your default workspace — change it anytime from the sidebar footer.', 'info')
       }
     })()
   }, [])
@@ -56,12 +60,13 @@ export default function App(): React.JSX.Element {
           <Transcript />
           <Composer />
         </main>
+        <RightPanel />
       </div>
       <StatusBar />
-      {project === null && status === 'offline' && <Onboarding />}
       <UpdateBanner />
       <CommandPalette />
       <UiRequestModal />
+      <FileViewer />
       <Toasts />
     </div>
   )

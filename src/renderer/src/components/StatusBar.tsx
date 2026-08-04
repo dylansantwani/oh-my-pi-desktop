@@ -3,7 +3,6 @@ import { useAppStore } from '../store'
 
 export function StatusBar(): React.JSX.Element {
   const status = useAppStore((s) => s.status)
-  const model = useAppStore((s) => s.model)
   const contextUsage = useAppStore((s) => s.contextUsage)
   const tokensPerSecond = useAppStore((s) => s.tokensPerSecond)
   const isStreaming = useAppStore((s) => s.isStreaming)
@@ -13,7 +12,6 @@ export function StatusBar(): React.JSX.Element {
         <span className="dot" />
         {status}
       </span>
-      {model && <span className="model-chip">{model.provider}/{model.id}</span>}
       {contextUsage && (
         <span className="ctx">
           <span>

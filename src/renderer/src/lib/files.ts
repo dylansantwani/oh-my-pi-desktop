@@ -19,7 +19,7 @@ export function extractFileRefs(ev: Record<string, unknown>, projectDir: string)
   if (ev.type !== 'tool_execution_start') return []
   const name = typeof ev.name === 'string' ? ev.name : ''
   if (DIR_TOOLS.has(name)) return []
-  const args = ev.args
+  const args = ev.args as Record<string, unknown> | undefined
   if (!args || typeof args !== 'object' || Array.isArray(args)) return []
   const out: FileRef[] = []
   const pushPath = (raw: unknown): void => {
