@@ -279,8 +279,8 @@ body {
 .empty-hint { color: var(--text-faint); text-align: center; margin-top: 48px; font-size: 13px; }
 
 /* messages */
-.message { display: flex; animation: fade-up var(--dur-3) var(--ease-out) both; }
-.message.user { justify-content: flex-end; }
+.message { display: flex; flex-direction: column; animation: fade-up var(--dur-3) var(--ease-out) both; }
+.message.user { align-items: flex-end; }
 .bubble {
   max-width: 82%;
   border-radius: var(--r-lg);
