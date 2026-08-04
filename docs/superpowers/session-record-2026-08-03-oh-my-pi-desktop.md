@@ -177,6 +177,21 @@ Shipped on top of v1.1 (commits `9a2ddec`, `4eac155`, plus this pass):
    (confirm/select/input/editor/notify) and absorbs the rest. Contract test
    `test/renderer/ui-request.test.ts` (3 tests: setWidget absorbed, notify
    passes, methodless request passes). Suite now **30 passed / 2 skipped**.
+7. **Production feature batch (v1.2.1)** — command palette (Ctrl+K; fuzzy
+   actions + session search, arrow/enter/esc nav, Actions/Sessions groups),
+   global shortcuts (Ctrl+K palette, Ctrl+N new session, Ctrl+O pick project,
+   Esc close), session export to HTML wired to the previously-unused
+   `omp:export_html` IPC (palette action + toast), hover copy buttons on
+   messages (with ✓ feedback), and native turn-completion notifications in
+   main (fires on `agent_end` only when the window isn't focused). New tests
+   `test/renderer/command-palette.test.tsx` (9: palette render/filter/
+   select/click/esc + Ctrl+K and Escape via rendered App). Suite **39 / 2**.
+8. **UI overhaul** — full design system + animation layer (see the
+   "Polish chat UI" commit): design tokens, brand gradient, frosted-glass
+   bars, message entrance + streaming caret, tool-card/modal/toast
+   animations, status pill + context progress bar + stream dots, jump-to-
+   bottom, copy feedback, onboarding branding, `prefers-reduced-motion`
+   support. Suite **39 / 2**.
 
 ## Build / run instructions
 
