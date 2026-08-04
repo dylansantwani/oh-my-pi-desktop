@@ -58,9 +58,13 @@ Grab the installer from [Releases](https://github.com/dylansantwani/oh-my-pi-des
 or build it yourself:
 
 ```bash
-npm install
+npm ci
 npm run dist
 ```
+
+(`npm ci` installs exactly what `package-lock.json` pins — use it on any
+machine for a reproducible install; the `allowScripts` policy in
+`package.json` approves the install scripts npm 11 gates behind approval.)
 
 That produces `dist/Oh My Pi Desktop Setup 0.1.1.exe` (a per-user NSIS
 installer) plus an unpacked portable folder at `dist/win-unpacked/`. Local
@@ -170,7 +174,7 @@ site/           source of oh-my-pi-desktop.pulse-core.com (static, no build step
 ## Development
 
 ```bash
-npm install
+npm ci
 npm run dev          # electron-vite dev server + app window
 npm test             # unit tests (protocol against a mock omp + jsdom component tests)
 RUN_E2E=1 npm test   # + integration tests against the real omp

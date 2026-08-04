@@ -6,6 +6,10 @@
   "type": "module",
   "private": true,
   "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10"
+  },
   "homepage": "https://oh-my-pi-desktop.pulse-core.com",
   "repository": {
     "type": "git",
@@ -48,6 +52,12 @@
   },
   "overrides": {
     "@noble/hashes": "1.8.0"
+  },
+  "allowScripts": {
+    "electron": true,
+    "electron-winstaller": true,
+    "esbuild": true,
+    "fsevents": true
   },
   "build": {
     "appId": "com.ohmy.pi.desktop",
