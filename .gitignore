@@ -3,3 +3,5 @@ out/
 dist/
 *.log
 .DS_Store
+# Session exports written by the app's "Export to HTML" action
+omp-session-*.html
