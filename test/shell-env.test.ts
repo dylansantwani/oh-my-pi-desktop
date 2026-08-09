@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest'
 import { spawnSync } from 'child_process'
+import { delimiter } from 'path'
 import {
   applyShellPath,
   envWithShellPath,
@@ -22,6 +23,14 @@ function fenced(path: string): string {
   return `__OMP_PATH_START__${path}__OMP_PATH_END__`
 }
 
+/** Join PATH entries with the host's separator. shell-env uses path.delimiter,
+ *  which is fixed by the real platform at import time and is NOT affected by
+ *  the process.platform stub below — so a literal ':' here would fail on a
+ *  Windows runner even though the darwin code path is what is under test. */
+function p(...entries: string[]): string {
+  return entries.join(delimiter)
+}
+
 const platformDesc = Object.getOwnPropertyDescriptor(process, 'platform')!
 
 function setPlatform(platform: NodeJS.Platform): void {
@@ -35,7 +44,7 @@ beforeEach(() => {
   resetShellPathCache()
   spawnSyncMock.mockReset()
   setPlatform('darwin')
-  process.env.PATH = '/usr/bin:/bin'
+  process.env.PATH = p('/usr/bin', '/bin')
   process.env.SHELL = '/bin/zsh'
 })
 
@@ -113,25 +122,22 @@ describe('resolveShellPath', () => {
 
 describe('mergePaths', () => {
   it('keeps first occurrences, in order, dropping duplicates and blanks', () => {
-    expect(mergePaths('/a:/b::/a', '/b:/c')).toBe('/a:/b:/c')
+    expect(mergePaths(p('/a', '/b', '', '/a'), p('/b', '/c'))).toBe(p('/a', '/b', '/c'))
   })
 
   it('handles either side being empty', () => {
-    expect(mergePaths('', '/a:/b')).toBe('/a:/b')
-    expect(mergePaths('/a:/b', '')).toBe('/a:/b')
+    expect(mergePaths('', p('/a', '/b'))).toBe(p('/a', '/b'))
+    expect(mergePaths(p('/a', '/b'), '')).toBe(p('/a', '/b'))
   })
 })
 
 describe('applyShellPath', () => {
   it('puts shell entries first and keeps inherited ones', () => {
-    process.env.PATH = '/usr/bin:/bin:/usr/sbin:/sbin'
-    shellPrinted(fenced('/Users/t/.local/bin:/opt/homebrew/bin:/usr/bin:/bin'))
-    expect(applyShellPath()).toBe(
-      '/Users/t/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
-    )
-    expect(process.env.PATH).toBe(
-      '/Users/t/.local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin'
-    )
+    process.env.PATH = p('/usr/bin', '/bin', '/usr/sbin', '/sbin')
+    shellPrinted(fenced(p('/Users/t/.local/bin', '/opt/homebrew/bin', '/usr/bin', '/bin')))
+    const merged = p('/Users/t/.local/bin', '/opt/homebrew/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin')
+    expect(applyShellPath()).toBe(merged)
+    expect(process.env.PATH).toBe(merged)
   })
 
   it('leaves process.env.PATH alone on win32', () => {
@@ -145,15 +151,15 @@ describe('applyShellPath', () => {
 
 describe('envWithShellPath', () => {
   it('enriches PATH while leaving the rest of the env intact', () => {
-    shellPrinted(fenced('/Users/t/.local/bin:/usr/bin'))
-    const env = envWithShellPath({ PATH: '/usr/bin:/bin', FOO: 'bar' })
-    expect(env.PATH).toBe('/Users/t/.local/bin:/usr/bin:/bin')
+    shellPrinted(fenced(p('/Users/t/.local/bin', '/usr/bin')))
+    const env = envWithShellPath({ PATH: p('/usr/bin', '/bin'), FOO: 'bar' })
+    expect(env.PATH).toBe(p('/Users/t/.local/bin', '/usr/bin', '/bin'))
     expect(env.FOO).toBe('bar')
   })
 
   it('defaults to process.env', () => {
-    shellPrinted(fenced('/Users/t/.local/bin'))
-    expect(envWithShellPath().PATH).toBe('/Users/t/.local/bin:/usr/bin:/bin')
+    shellPrinted(fenced(p('/Users/t/.local/bin')))
+    expect(envWithShellPath().PATH).toBe(p('/Users/t/.local/bin', '/usr/bin', '/bin'))
   })
 
   it('hands back the same object on win32 — a spread copy loses case-insensitivity', () => {
