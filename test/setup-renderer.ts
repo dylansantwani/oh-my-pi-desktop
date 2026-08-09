@@ -37,6 +37,33 @@ if (typeof window !== 'undefined') {
     onUiRequest: vi.fn(() => () => {}),
     onStatus: vi.fn(() => () => {}),
     onUpdateStatus: vi.fn(() => () => {}),
-    installUpdate: vi.fn(async () => {})
+    onMenuCommand: vi.fn(() => () => {}),
+    onSettingsChanged: vi.fn(() => () => {}),
+    installUpdate: vi.fn(async () => {}),
+    getSettings: vi.fn(async () => ({
+      theme: 'system' as const,
+      fontSize: 14,
+      notifyOnTurnEnd: true,
+      autoCheckUpdates: true,
+      ompPathOverride: null
+    })),
+    updateSettings: vi.fn(async (patch: Record<string, unknown>) => ({
+      theme: 'system' as const,
+      fontSize: 14,
+      notifyOnTurnEnd: true,
+      autoCheckUpdates: true,
+      ompPathOverride: null,
+      ...patch
+    })),
+    resetSettings: vi.fn(async () => ({
+      theme: 'system' as const,
+      fontSize: 14,
+      notifyOnTurnEnd: true,
+      autoCheckUpdates: true,
+      ompPathOverride: null
+    })),
+    // Tests default to the non-mac branch; a case needing the macOS chrome can
+    // restub this field on its own.
+    platform: 'win32'
   })
 }

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Hardened-runtime entitlements for the main Oh My Pi Desktop bundle.
+
+	  Note there is deliberately NO com.apple.security.app-sandbox key: the app
+	  launches the user's own `omp` binary from an arbitrary $PATH location and
+	  reads/writes files across the user's projects. The App Sandbox would
+	  forbid both, so the app ships hardened-but-unsandboxed (the same posture
+	  as VS Code, iTerm, and other developer tools distributed outside the
+	  Mac App Store).
+	-->
+
+	<!-- V8 needs to map JIT pages. Required by every Electron app. -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+
+	<!-- V8 writes to executable pages; without this the renderer dies at
+	     startup under the hardened runtime. -->
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+
+	<!-- Electron sets DYLD_* for its helper processes, and the spawned `omp`
+	     child inherits an environment that may carry DYLD_/NODE_ vars from the
+	     user's shell profile. Stripped without this entitlement. -->
+	<key>com.apple.security.cs.allow-dyld-environment-variables</key>
+	<true/>
+
+	<!-- The `omp` binary and any Node native addon it loads are signed by
+	     someone else (or ad-hoc signed). Library validation would refuse to
+	     let them load into a process tree rooted at this bundle. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+
+	<!-- Talking to the omp agent over its local RPC socket, plus the
+	     electron-updater feed on GitHub. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+</dict>
+</plist>

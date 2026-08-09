@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Applied to everything nested inside the bundle: the Electron Helper
+	  apps (GPU / Renderer / Plugin) and any child process the app spawns,
+	  including the `omp` agent binary.
+
+	  These MUST stay in sync with the parent's JIT/dyld keys — a helper that
+	  lacks allow-unsigned-executable-memory crashes on launch, and a child
+	  spawned without allow-dyld-environment-variables loses the PATH/NODE_*
+	  environment the agent host relies on to find `omp`.
+	-->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<key>com.apple.security.cs.allow-dyld-environment-variables</key>
+	<true/>
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+
+	<!-- Child processes inherit the parent's security context rather than
+	     getting a fresh (empty) one. -->
+	<key>com.apple.security.inherit</key>
+	<true/>
+</dict>
+</plist>

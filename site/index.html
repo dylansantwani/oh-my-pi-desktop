@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Oh My Pi Desktop — a desktop client for the omp coding agent</title>
-<meta name="description" content="A Windows desktop chat client for the Oh My Pi coding agent. Streaming markdown, tool-call cards, todos, and per-project sessions over omp's RPC protocol.">
+<meta name="description" content="A Windows and macOS desktop chat client for the Oh My Pi coding agent. Streaming markdown, tool-call cards, todos, and per-project sessions over omp's RPC protocol.">
 <link rel="icon" href="assets/icon.png" type="image/png">
 <meta property="og:title" content="Oh My Pi Desktop">
 <meta property="og:description" content="A desktop chat client for the Oh My Pi coding agent. Not a terminal wrapper — a real RPC client.">
@@ -35,7 +35,7 @@
 
   <section class="hero">
     <img class="hero-icon" src="assets/icon.png" alt="Oh My Pi Desktop icon" width="104" height="104">
-    <p class="eyebrow">Windows desktop app · v0.1.0 · MIT</p>
+    <p class="eyebrow">Windows &amp; macOS desktop app · v0.3.0 · MIT</p>
     <h1>A desktop client for the <span class="grad">Oh My Pi</span> coding agent.</h1>
     <p class="lede">
       <code>omp</code> ships with a terminal TUI and an RPC mode. This is the GUI —
@@ -43,10 +43,10 @@
       the whole conversation: streaming markdown, tool-call cards, todos, and sessions.
     </p>
     <div class="cta">
-      <a class="btn primary" href="https://github.com/dylansantwani/oh-my-pi-desktop/releases">Download for Windows</a>
+      <a class="btn primary" href="https://github.com/dylansantwani/oh-my-pi-desktop/releases">Download for Windows &amp; macOS</a>
       <a class="btn" href="https://github.com/dylansantwani/oh-my-pi-desktop">View source</a>
     </div>
-    <p class="fineprint">Requires <code>omp</code> on your PATH. The installer is unsigned in v1 — SmartScreen will warn on first run.</p>
+    <p class="fineprint">Requires <code>omp</code> installed. Builds are not signed with a paid certificate — Windows SmartScreen warns on first run, and on macOS use right-click &rarr; Open the first time.</p>
   </section>
 
   <section class="shot">
@@ -104,17 +104,17 @@
         <span class="num">1</span>
         <div>
           <h3>Have <code>omp</code> installed</h3>
-          <p>On your PATH, or at <code>~/.bun/bin/omp.exe</code>. The app detects both, and offers a manual path if neither is found.</p>
+          <p>The app probes the usual install locations and your login-shell PATH on both platforms, and takes an explicit path in Settings if yours lives somewhere unusual.</p>
         </div>
       </div>
       <div class="step">
         <span class="num">2</span>
         <div>
           <h3>Install the app</h3>
-          <p>Download the NSIS installer from releases — or build it yourself:</p>
-          <pre><code>npm install
-npm run dist</code></pre>
-          <p class="sub">Outputs <code>dist/Oh My Pi Desktop Setup 0.1.0.exe</code> and a portable <code>dist/win-unpacked/</code>.</p>
+          <p>Download the installer (Windows) or the <code>.dmg</code> (macOS, Apple Silicon or Intel) from releases — or build it yourself:</p>
+          <pre><code>npm ci
+npm run dist:mac   # or dist:win</code></pre>
+          <p class="sub">Outputs a <code>.dmg</code> + <code>.zip</code> on macOS, or an NSIS installer + portable <code>.exe</code> on Windows.</p>
         </div>
       </div>
       <div class="step">

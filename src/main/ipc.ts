@@ -1,10 +1,18 @@
 import { app, dialog, ipcMain, BrowserWindow, Notification } from 'electron'
+import { join } from 'path'
 import { AgentHost } from './agent-host'
 import { scanSessions } from './session-scanner'
 import { readProjectFile } from './read-file'
 import type { ProjectMemory } from './session-store'
+import type { AppSettings, SettingsStore } from './settings-store'
 
-export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: string, installUpdate: () => void): void {
+export function registerIpc(
+  host: AgentHost,
+  memory: ProjectMemory,
+  ompPath: string,
+  installUpdate: () => void,
+  settings: SettingsStore
+): void {
   const send = (channel: string, payload: unknown): void => {
     for (const win of BrowserWindow.getAllWindows()) {
       win.webContents.send(channel, payload)
@@ -13,7 +21,12 @@ export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: str
 
   host.onEvent((frame) => {
     send('omp:event', frame)
-    if (frame.type === 'agent_end' && !BrowserWindow.getFocusedWindow() && Notification.isSupported()) {
+    if (
+      frame.type === 'agent_end' &&
+      settings.get().notifyOnTurnEnd &&
+      !BrowserWindow.getFocusedWindow() &&
+      Notification.isSupported()
+    ) {
       // The user is looking at another app — surface turn completion natively.
       new Notification({ title: 'Oh My Pi', body: 'The agent finished its turn.' }).show()
     }
@@ -72,8 +85,25 @@ export function registerIpc(host: AgentHost, memory: ProjectMemory, ompPath: str
     host.client?.sendRaw({ type: 'extension_ui_response', id, value, confirmed, cancelled })
   })
   ipcMain.handle('omp:update_install', () => installUpdate())
+
+  ipcMain.handle('omp:get_settings', () => settings.get())
+  ipcMain.handle('omp:update_settings', (_e, patch: Partial<AppSettings>) => {
+    const next = settings.update(patch && typeof patch === 'object' ? patch : {})
+    // Every window shares one settings file — broadcast so a second window's UI
+    // can't drift from what was just persisted.
+    send('omp:settings_changed', next)
+    return next
+  })
+  ipcMain.handle('omp:reset_settings', () => {
+    const next = settings.reset()
+    send('omp:settings_changed', next)
+    return next
+  })
 }
 
+/** Where the agent keeps its session logs. Must be joined, not concatenated —
+ *  hardcoded backslashes produce one nonsense filename on macOS and Linux,
+ *  which silently reads back as "this project has no sessions". */
 export function defaultSessionDir(): string {
-  return app.getPath('home') + '\\' + '.omp\\agent\\sessions'
+  return join(app.getPath('home'), '.omp', 'agent', 'sessions')
 }

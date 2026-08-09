@@ -4,12 +4,15 @@ import { FolderOpen, RefreshCw, Command, FileDown } from 'lucide-react'
 
 export function TopBar(): React.JSX.Element {
   const project = useAppStore((s) => s.project)
+  // The window has no title bar on macOS — the traffic lights are overlaid on
+  // this strip, so it needs a left inset to clear them.
+  const isMac = window.omp?.platform === 'darwin'
   return (
-    <header className="topbar">
+    <header className={isMac ? 'topbar is-mac' : 'topbar'}>
       <div className="topbar-title">
         <h1>Oh My Pi Desktop</h1>
       </div>
-      <div className="topbar-controls">
+      <div className="topbar-controls no-drag">
         <button
           className="btn project-chip"
           onClick={() => void useAppStore.getState().pickProjectAndConnect()}

@@ -1,0 +1,125 @@
+name: Release
+#
+# ---------------------------------------------------------------------------
+# macOS code signing / notarization
+# ---------------------------------------------------------------------------
+# There is no Apple Developer account yet, so `build.mac.identity` in
+# package.json is "-" (ad-hoc). Ad-hoc signing is what makes the Apple Silicon
+# build launchable at all -- an unsigned arm64 bundle is refused by the kernel
+# -- but it is NOT accepted by Gatekeeper on other machines, so users must
+# right-click > Open (or run `xattr -dr com.apple.quarantine <app>`) once.
+#
+# To turn on real signing + notarization once certificates exist:
+#   1. package.json  -> "build": { "mac": { "notarize": true } }   (one line)
+#   2. package.json  -> remove  "identity": "-"  so the Developer ID cert in
+#                       the keychain is auto-discovered
+#   3. delete the CSC_IDENTITY_AUTO_DISCOVERY line from the publish step below
+#   4. add these repository secrets and pass them through as env vars:
+#        CSC_LINK              base64 of the Developer ID .p12
+#        CSC_KEY_PASSWORD      its password
+#        APPLE_ID              Apple account email
+#        APPLE_APP_SPECIFIC_PASSWORD
+#        APPLE_TEAM_ID
+# The entitlements in build/entitlements.mac*.plist already cover the hardened
+# runtime requirements, so nothing there needs to change.
+# ---------------------------------------------------------------------------
+
+on:
+  push:
+    tags: ['v*']
+
+# electron-builder's GitHub publisher creates/updates the release and uploads
+# assets, which needs write access to repository contents.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macOS (dmg + zip, arm64 + x64)
+            # The zip target is what produces latest-mac.yml; electron-updater
+            # cannot update a macOS app from a dmg.
+            builder_args: --mac
+          - os: windows-latest
+            label: Windows (nsis + portable, x64)
+            builder_args: --win
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # A tag that disagrees with package.json would publish assets under a
+      # release electron-updater never looks at. Fail early instead.
+      - name: Verify tag matches package.json version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $pkg"
+            exit 1
+          fi
+          echo "Releasing v$pkg"
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build main / preload / renderer
+        run: npm run build
+
+      - name: Package and publish
+        run: npx --no-install electron-builder ${{ matrix.builder_args }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No Apple Developer account yet: stop electron-builder from hunting
+          # the keychain for a signing identity. Drop this (and flip
+          # build.mac.notarize to true) once certificates are available.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # Keeps the installers reachable for 14 days even if the draft release is
+      # deleted or the publish step half-finishes.
+      - name: Upload installers as workflow artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+            dist/*.blockmap
+            dist/latest*.yml
+
+  # electron-builder publishes as a DRAFT release by default. Auto-update
+  # clients cannot see draft assets, so the release must be published (in the
+  # GitHub UI, or by adding `"releaseType": "release"` to the publish block in
+  # package.json) before latest.yml / latest-mac.yml go live.
+  summary:
+    name: Release summary
+    needs: release
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        run: |
+          echo "### ${GITHUB_REF_NAME} packaged" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Assets were uploaded to a **draft** GitHub Release." >> "$GITHUB_STEP_SUMMARY"
+          echo "Publish the draft to activate auto-updates (latest.yml / latest-mac.yml)." >> "$GITHUB_STEP_SUMMARY"

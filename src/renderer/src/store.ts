@@ -26,9 +26,14 @@ interface AppState {
   sessionName: string
   todos: TodoPhase[]
   paletteOpen: boolean
+  settingsOpen: boolean
+  rightPanelOpen: boolean
   rightTab: 'todos' | 'files' | 'context'
   sessionFiles: FileRef[]
   openFilePath: string | null
+  searchOpen: boolean
+  searchQuery: string
+  searchMatchIndex: number
   sendPrompt: (text: string) => Promise<void>
   abort: () => Promise<void>
   steer: (text: string) => Promise<void>
@@ -45,14 +50,34 @@ interface AppState {
   renameSession: (name: string) => Promise<void>
   exportHtml: () => Promise<void>
   setPaletteOpen: (open: boolean) => Promise<void>
+  setSettingsOpen: (open: boolean) => void
+  toggleRightPanel: () => void
   setRightTab: (tab: 'todos' | 'files' | 'context') => void
   setOpenFile: (path: string | null) => void
+  setSearchOpen: (open: boolean) => void
+  setSearchQuery: (query: string) => void
+  stepSearchMatch: (delta: number) => void
   loadOlder: () => Promise<void>
   answerUi: (id: string, value: unknown, confirmed?: boolean, cancelled?: boolean) => Promise<void>
   toast: (text: string, kind?: 'error' | 'info') => void
 }
 
 let toastSeq = 0
+
+/** Ids of the transcript messages matching `query`, in transcript order.
+ *  Case-insensitive substring, and only over `text`: `thinking` lives behind a
+ *  collapsed <details> and tool-call args/results inside their own collapsible
+ *  cards, so a hit in either could never be revealed or scrolled to from the
+ *  search bar — counting it would just make "n of m" lie. */
+export function searchMatches(messages: TranscriptMessage[], query: string): string[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return []
+  const ids: string[] = []
+  for (const m of messages) {
+    if (m.text.toLowerCase().includes(q)) ids.push(m.id)
+  }
+  return ids
+}
 
 export const useAppStore = create<AppState>((set, get) => ({
   status: 'offline',
@@ -73,9 +98,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessionName: '',
   todos: [],
   paletteOpen: false,
+  settingsOpen: false,
+  rightPanelOpen: true,
   rightTab: 'todos',
   sessionFiles: [],
   openFilePath: null,
+  searchOpen: false,
+  searchQuery: '',
+  searchMatchIndex: 0,
 
   toast: (text, kind = 'info') => {
     const id = ++toastSeq
@@ -240,9 +270,38 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ paletteOpen: open })
   },
 
+  // No settings surface exists yet — the flag is here so the menu's
+  // Preferences item is already wired when that panel lands.
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
+
+  toggleRightPanel: () => set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
+
   setRightTab: (tab) => set({ rightTab: tab }),
 
   setOpenFile: (path) => set({ openFilePath: path }),
+
+  setSearchOpen: (open) =>
+    // Closing drops the query too, so the transcript highlight goes with the
+    // bar and reopening always starts from a clean slate.
+    set(open ? { searchOpen: true, searchMatchIndex: 0 } : { searchOpen: false, searchQuery: '', searchMatchIndex: 0 }),
+
+  setSearchQuery: (query) => {
+    // The debounce can land on a query that was already flushed by Enter;
+    // re-setting it would silently rewind the user's position to match 1.
+    if (get().searchQuery === query) return
+    set({ searchQuery: query, searchMatchIndex: 0 })
+  },
+
+  stepSearchMatch: (delta) => {
+    const total = searchMatches(get().messages, get().searchQuery).length
+    if (total === 0) {
+      set({ searchMatchIndex: 0 })
+      return
+    }
+    // Wrap both ways: next past the last hit returns to the first, prev from
+    // the first lands on the last. `% ` alone gives negatives in JS.
+    set((s) => ({ searchMatchIndex: (((s.searchMatchIndex + delta) % total) + total) % total }))
+  },
 
   loadOlder: async () => {
     const { nextCursor } = get()

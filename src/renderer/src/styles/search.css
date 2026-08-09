@@ -1,0 +1,86 @@
+/* ============================================================
+   Transcript find bar — overlays the top of the transcript column.
+   Every colour and radius comes from the global tokens so the bar
+   follows the app theme instead of pinning its own.
+   ============================================================ */
+
+.search-bar {
+  position: absolute;
+  top: 12px;
+  /* .chat centres its children, but an absolutely positioned box opts out of
+     that — centre it over the 820px transcript column by hand. */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6; /* above .jump-btn (5), below the modal layer */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(440px, calc(100% - 48px));
+  padding: 6px 6px 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-2);
+  /* opacity-only entrance: a transform-based one would fight translateX. */
+  animation: fade-in var(--dur-2) var(--ease-out) both;
+}
+
+.search-icon { color: var(--text-faint); flex-shrink: 0; }
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.search-input::placeholder { color: var(--text-faint); }
+
+.search-count {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.search-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background var(--dur-1) ease, color var(--dur-1) ease, border-color var(--dur-1) ease;
+}
+.search-btn:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--border); color: var(--text); }
+.search-btn:disabled { opacity: 0.35; cursor: default; }
+
+/* ---------- transcript match highlight ----------
+   Highlighting happens at the message level: `text` is rendered through
+   react-markdown, so wrapping matched substrings would mean injecting into that
+   pipeline. Outlining the bubble leaves the markdown output untouched. */
+.transcript-row { display: flex; flex-direction: column; scroll-margin: 72px 0; }
+
+.transcript-row.search-hit .bubble {
+  outline: 1px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+.transcript-row.search-hit-active .bubble {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--accent-soft), var(--shadow-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-bar { animation: none; }
+  .search-btn { transition: none; }
+}

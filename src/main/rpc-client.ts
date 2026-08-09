@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process'
 import { EventEmitter } from 'events'
 import readline from 'readline'
+import { mergePaths, resolveShellPath } from './shell-env'
 import type {
   AgentEvent,
   ReadyFrame,
@@ -64,7 +65,16 @@ export class RpcClient extends EventEmitter {
 
   start(): Promise<void> {
     if (this.child) throw new Error('RpcClient already started')
-    const env = { PI_RPC_EMIT_TITLE: '1', ...process.env, ...this.opts.env }
+    // Annotated: spreading an optional Record onto the literal otherwise narrows
+    // the inferred type to just the seeded key, and the PATH write below fails.
+    const env: NodeJS.ProcessEnv = { PI_RPC_EMIT_TITLE: '1', ...process.env, ...this.opts.env }
+    // omp shells out to git/rg/node; a Finder-launched app has only
+    // /usr/bin:/bin:/usr/sbin:/sbin to offer it. Lead with the login-shell PATH
+    // so the child resolves tools exactly as the user's terminal would, keeping
+    // whatever we were handed after it. Skipped on Windows, where process.env is
+    // case-insensitive but this spread is not — writing PATH onto it could leave
+    // the child holding both `Path` and `PATH`.
+    if (process.platform !== 'win32') env.PATH = mergePaths(resolveShellPath(), env.PATH ?? '')
     const bin = this.opts.scriptMode ? process.execPath : this.opts.ompPath
     const args = this.opts.scriptMode
       ? [this.opts.ompPath, '--mode', 'rpc', '--cwd', this.opts.cwd]

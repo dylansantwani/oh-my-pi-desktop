@@ -12,8 +12,8 @@ whole conversation: streaming markdown, tool-call cards, todos, and sessions.
 
 [![Website](https://img.shields.io/badge/site-oh--my--pi--desktop.pulse--core.com-60a5fa?style=flat-square)](https://oh-my-pi-desktop.pulse-core.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4ade80?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.0-64748b?style=flat-square)](package.json)
-[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-5b8c5a?style=flat-square)](#requirements)
+[![Version](https://img.shields.io/badge/version-0.3.0-64748b?style=flat-square)](package.json)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS-5b8c5a?style=flat-square)](#requirements)
 [![Electron](https://img.shields.io/badge/electron-43-47848f?style=flat-square)](package.json)
 [![React](https://img.shields.io/badge/react-19-61dafb?style=flat-square)](package.json)
 
@@ -46,36 +46,54 @@ wrapper: there is no PTY, no ANSI parsing, no screen scraping.
 
 ## Requirements
 
-- **Windows 10/11**
-- **`omp` on your PATH**, or installed at `~/.bun/bin/omp.exe`
+- **Windows 10/11**, or **macOS 11+** (Apple Silicon and Intel)
+- **`omp` installed.** The app probes the usual install locations and your PATH;
+  if yours lives somewhere unusual, set an explicit path in Settings.
 - **Node ≥ 22.12.0 and npm** — for development only, not for running the installer.
   Earlier 22.x fails the jsdom renderer tests with an ESM `require()` error; `engines` enforces the floor.
+
+> **macOS PATH note.** An app launched from Finder inherits a bare
+> `/usr/bin:/bin:/usr/sbin:/sbin`, which is why GUI apps so often "can't find"
+> a tool that works fine in your terminal. This one resolves your real login-shell
+> PATH at startup and hands it to `omp`, so `~/.local/bin`, Homebrew, bun, and
+> cargo installs all resolve the same way they do in a shell.
 
 ---
 
 ## Install
 
-Grab the installer from [Releases](https://github.com/dylansantwani/oh-my-pi-desktop/releases),
-or build it yourself:
+Grab a build from [Releases](https://github.com/dylansantwani/oh-my-pi-desktop/releases):
+
+| Platform | Asset |
+|---|---|
+| macOS (Apple Silicon) | `oh-my-pi-desktop-<version>-mac-arm64.dmg` |
+| macOS (Intel) | `oh-my-pi-desktop-<version>-mac-x64.dmg` |
+| Windows (installer) | `oh-my-pi-desktop-<version>-win-x64-setup.exe` |
+| Windows (portable) | `oh-my-pi-desktop-<version>-win-x64-portable.exe` |
+
+Or build it yourself:
 
 ```bash
 npm ci
-npm run dist
+npm run dist:mac     # or dist:win, or dist:all
 ```
 
 (`npm ci` installs exactly what `package-lock.json` pins — use it on any
 machine for a reproducible install; the `allowScripts` policy in
 `package.json` approves the install scripts npm 11 gates behind approval.)
 
-That produces `dist/Oh My Pi Desktop Setup 0.1.1.exe` (a per-user NSIS
-installer) plus an unpacked portable folder at `dist/win-unpacked/`. Local
-builds never publish (`--publish never`); to cut a release, push a version
-tag and run `electron-builder --win nsis --publish always` with `GH_TOKEN`
-set — that uploads the installer + `latest.yml` feed that the auto-updater
-consumes.
+Local builds never publish (`--publish never`). Releases are cut by CI: push a
+`v*` tag and [`release.yml`](.github/workflows/release.yml) builds on both a
+macOS and a Windows runner and uploads every artifact plus the `latest.yml` /
+`latest-mac.yml` feeds the auto-updater consumes.
 
-> ⚠️ **The installer is unsigned in v1.** Windows SmartScreen will warn on first
-> run — "More info" → "Run anyway". Code signing is a v2 item.
+> ⚠️ **Builds are not signed with a paid certificate.**
+> On **Windows**, SmartScreen warns on first run — "More info" → "Run anyway".
+> On **macOS**, the app is ad-hoc signed (which is what makes it runnable at all
+> on Apple Silicon) but not notarized, so Gatekeeper blocks a double-click:
+> **right-click → Open → Open** the first time, and never again after that.
+> Enabling real signing is a config change plus certificate secrets — see the
+> comment block at the top of `release.yml`.
 
 ---
 
@@ -92,15 +110,19 @@ consumes.
 | ✅ **Todo panel** | `todo_reminder` events drive a collapsible phase/task panel with status chips. |
 | 🪟 **Agent dialogs** | `extension_ui_request` (confirm / select / input / editor / notify) renders as real modals and posts answers back. |
 | ♻️ **Survives crashes** | If the agent dies, a banner appears and the process restarts on the same project and session, with history replayed. The transcript is not lost. |
+| 🔀 **Diff viewer** | File edits render as a real unified diff — gutters, line numbers, and a `+N`/`−M` stat pill on the collapsed card — instead of raw JSON args. Large diffs collapse behind a toggle. |
+| 🔎 **Transcript search** | `Cmd/Ctrl+F` searches the loaded transcript with match counts and next/previous navigation. |
+| ⚙️ **Settings** | Theme (system / dark / light), text size, turn-completion notifications, auto-update opt-out, and an explicit `omp` path override. |
+| 🖥 **Native menus** | A real application menu on both platforms — including the standard macOS edit roles, without which `Cmd+C`/`Cmd+V` do not work in an Electron app at all. |
 
-### Not in v1
+### Not yet
 
-No embedded terminal, file explorer, diff viewer, or git panel. No concurrent
-multi-session streaming — `omp` RPC hosts one active session per process, so
-navigation is switch-then-view. No macOS or Linux builds. No code signing
-(SmartScreen warns on first run) — the installer itself is unsigned, but the
-auto-update channel uses the GitHub-hosted `latest.yml` and is not tied to
-signing.
+No embedded terminal or git panel, and the Files panel lists session-touched
+files rather than being a full project explorer. No concurrent multi-session
+streaming — `omp` RPC hosts one active session per process, so navigation is
+switch-then-view. No Linux build. No paid code signing or notarization; the
+auto-update channel uses the GitHub-hosted `latest.yml` / `latest-mac.yml` and
+is not tied to signing.
 
 ---
 
@@ -139,9 +161,12 @@ Source layout:
 ```
 src/main/       agent-host.ts (process lifecycle + reconnect)
                 rpc-client.ts (JSONL protocol, v2 chunking, id correlation)
-                session-scanner.ts (session listing), ipc.ts
+                omp-detect.ts (per-platform binary discovery)
+                shell-env.ts (login-shell PATH — the macOS Finder-launch fix)
+                menu.ts (application menu + accelerators)
+                session-scanner.ts (session listing), settings-store.ts, ipc.ts
 src/preload/    typed window.omp contextBridge API
-src/renderer/   React UI — chat, tool cards, todos, sessions, dialogs
+src/renderer/   React UI — chat, tool cards, diffs, todos, sessions, dialogs
 site/           source of oh-my-pi-desktop.pulse-core.com (static, no build step)
 ```
 
@@ -178,9 +203,15 @@ site/           source of oh-my-pi-desktop.pulse-core.com (static, no build step
 npm ci
 npm run dev          # electron-vite dev server + app window
 npm test             # unit tests (protocol against a mock omp + jsdom component tests)
+npm run typecheck    # tsc over main and renderer — see note below
 RUN_E2E=1 npm test   # + integration tests against the real omp
-npm run gen:icon     # regenerate the icon set from the 512px source
+npm run gen:icon     # regenerate icon.png/.icns/.ico from the SVG source
 ```
+
+> `npm run build` uses esbuild, which strips types without checking them, so a
+> type error can sail through a green build and only surface at runtime.
+> `npm run typecheck` is the gate that actually reads the tsconfigs; CI runs it
+> before the tests.
 
 `RUN_E2E=1` needs a configured provider, since it drives the real agent.
 

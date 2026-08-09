@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Superseded runs on the same branch are pointless; cancel them.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Report every platform's result, not just the first failure.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12'
+          # Keys the ~/.npm cache off package-lock.json.
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # electron-vite builds with esbuild, which strips types without checking
+      # them — a type error reaches a green build and only shows up at runtime.
+      # tsc is the only gate that actually reads the tsconfigs.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build main / preload / renderer
+        run: npm run build
+
+      # build.files in package.json excludes node_modules from app.asar, which
+      # keeps ~40 MB out of every installer. That is only safe while the main
+      # and preload bundles import nothing but Node builtins and `electron` --
+      # electron.vite.config.ts externalizes everything in `dependencies`, so a
+      # new main-process dependency would leave a bare require() in the bundle
+      # and crash the packaged app at launch. Catch that here, not in the wild.
+      - name: Verify packaged bundles need no node_modules
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/check-externals.cjs" <<'EOF'
+          const fs = require('fs')
+          const builtins = new Set(require('module').builtinModules.flatMap((m) => [m, 'node:' + m]))
+          const offenders = []
+          for (const file of ['out/main/index.js', 'out/preload/index.js']) {
+            const src = fs.readFileSync(file, 'utf8')
+            const ids = new Set()
+            for (const m of src.matchAll(/require\(\s*["']([^"']+)["']\s*\)/g)) ids.add(m[1])
+            for (const m of src.matchAll(/\bfrom\s*["']([^"'.][^"']*)["']/g)) ids.add(m[1])
+            for (const id of ids) {
+              if (id.startsWith('.') || id.startsWith('/')) continue
+              if (id === 'electron' || builtins.has(id)) continue
+              offenders.push(`${file} -> ${id}`)
+            }
+          }
+          if (offenders.length > 0) {
+            console.error('::error::packaged bundle would need node_modules at runtime:')
+            for (const o of offenders) console.error('  ' + o)
+            console.error('Fix: bundle the dependency via externalizeDepsPlugin({ exclude: [...] })')
+            console.error('in electron.vite.config.ts, or drop "!node_modules/**" from build.files.')
+            process.exit(1)
+          }
+          console.log('OK: main/preload require only Node builtins and electron')
+          EOF
+          node "$RUNNER_TEMP/check-externals.cjs"
+
+      # Regenerating the icons on every OS proves the pure-JS .icns and .ico
+      # writers in scripts/gen-icon.mjs do not depend on macOS-only tooling.
+      - name: Regenerate icons
+        run: npm run gen:icon

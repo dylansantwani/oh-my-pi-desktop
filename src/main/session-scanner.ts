@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'fs'
+import { readdirSync, readFileSync, realpathSync, statSync } from 'fs'
 import { join } from 'path'
 
 export interface SessionSummary {
@@ -11,8 +11,33 @@ export interface SessionSummary {
 
 const TITLE_SLOT_BYTES = 256
 
+/** Canonical form for comparing a session header's `cwd` against a project dir.
+ *  omp writes whichever separator the host used, so both sides are unified to
+ *  '/' before comparing; a trailing separator is dropped so ".../proj" and
+ *  ".../proj/" group together. Case is folded because both platforms this app
+ *  ships on — Windows and macOS — use case-insensitive filesystems by default. */
 function normalizeCwd(cwd: string): string {
-  return cwd.replaceAll('/', '\\').toLowerCase()
+  const unified = cwd.replaceAll('\\', '/')
+  const trimmed = unified.length > 1 ? unified.replace(/\/+$/, '') : unified
+  return trimmed.toLowerCase()
+}
+
+/** Both spellings of a path, canonicalized: the literal one and its symlink-
+ *  resolved form. On macOS `/tmp`, `/var`, and `/etc` are symlinks into
+ *  `/private`, so a session started by the `omp` CLI in `/tmp/proj` records that
+ *  literally while the desktop app's folder picker hands back
+ *  `/private/tmp/proj`. Comparing both spellings is what lets the same project
+ *  group whether its sessions came from the CLI or the GUI. Paths that no
+ *  longer exist simply contribute no resolved form. */
+function cwdKeys(cwd: string): string[] {
+  const keys = [normalizeCwd(cwd)]
+  try {
+    const real = normalizeCwd(realpathSync(cwd))
+    if (real !== keys[0]) keys.push(real)
+  } catch {
+    /* deleted or unreadable — the literal spelling is all we can match on */
+  }
+  return keys
 }
 
 function parseFirstJsonLine(text: string): Record<string, unknown> | null {
@@ -31,7 +56,7 @@ function parseFirstJsonLine(text: string): Record<string, unknown> | null {
 }
 
 export function scanSessions(baseDir: string, projectCwd: string): SessionSummary[] {
-  const target = normalizeCwd(projectCwd)
+  const targets = new Set(cwdKeys(projectCwd))
   const results: SessionSummary[] = []
   let buckets: string[]
   try {
@@ -71,7 +96,7 @@ export function scanSessions(baseDir: string, projectCwd: string): SessionSummar
       }
       const hdr = parseFirstJsonLine(text)
       if (!hdr || hdr.type !== 'session' || typeof hdr.cwd !== 'string') continue
-      if (normalizeCwd(hdr.cwd) !== target) continue
+      if (!cwdKeys(hdr.cwd).some((k) => targets.has(k))) continue
       results.push({
         path,
         title: typeof hdr.title === 'string' && hdr.title ? hdr.title : file,

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import { useAppStore } from '../../src/renderer/src/store'
 import { CommandPalette } from '../../src/renderer/src/components/CommandPalette'
 import App from '../../src/renderer/src/App'
+import type { MenuCommand } from '../../src/shared/omp-api'
 
 const newSession = vi.fn(async () => {})
 const switchSession = vi.fn(async () => {})
@@ -82,25 +83,29 @@ describe('CommandPalette', () => {
   })
 })
 
-describe('global keyboard shortcuts', () => {
-  it('Ctrl+K toggles the palette from anywhere in the app', () => {
+/** Cmd/Ctrl+K is declared by the application menu now, so the shortcut reaches
+ *  the renderer as a menu command rather than as a keydown. */
+function togglePalette(command: MenuCommand = 'command_palette'): void {
+  const cb = vi.mocked(window.omp.onMenuCommand).mock.calls.at(-1)?.[0]
+  if (!cb) throw new Error('App never subscribed to menu commands')
+  act(() => {
+    cb(command)
+  })
+}
+
+describe('global shortcuts', () => {
+  it('the palette shortcut toggles it from anywhere in the app', () => {
     render(<App />)
     expect(screen.queryByPlaceholderText(/Type a command/)).toBeNull()
-    act(() => {
-      fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
-    })
+    togglePalette()
     expect(screen.getByPlaceholderText(/Type a command/)).toBeTruthy()
-    act(() => {
-      fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
-    })
+    togglePalette()
     expect(screen.queryByPlaceholderText(/Type a command/)).toBeNull()
   })
 
   it('Escape closes the palette', () => {
     render(<App />)
-    act(() => {
-      fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
-    })
+    togglePalette()
     expect(screen.getByPlaceholderText(/Type a command/)).toBeTruthy()
     act(() => {
       fireEvent.keyDown(window, { key: 'Escape' })

@@ -3,11 +3,14 @@ import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { AgentHost } from './agent-host'
 import { registerIpc } from './ipc'
+import { installApplicationMenu } from './menu'
 import { ProjectMemory } from './session-store'
+import { SettingsStore } from './settings-store'
 import { findOmp } from './omp-detect'
 import { setupUpdater, installUpdate, type UpdateStatus } from './updater'
 
 const isDev = !app.isPackaged
+const isMac = process.platform === 'darwin'
 
 interface WindowState {
   width: number
@@ -59,7 +62,11 @@ function createWindow(): void {
     minHeight: 600,
     title: 'Oh My Pi Desktop',
     show: false,
+    // Windows/Linux keep their native frame with the menu bar folded away until
+    // Alt. macOS drops the title bar and floats the traffic lights over our own
+    // top bar instead — .topbar reserves the matching left inset.
     autoHideMenuBar: true,
+    ...(isMac ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 18, y: 17 } } : {}),
     backgroundColor: '#0f1115',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -116,19 +123,39 @@ if (!gotLock) {
     }
   })
   app.whenReady().then(() => {
+    if (isMac) {
+      app.setAboutPanelOptions({
+        applicationName: 'Oh My Pi Desktop',
+        applicationVersion: app.getVersion(),
+        copyright: 'MIT licensed',
+        credits: 'Desktop chat client for the Oh My Pi coding agent'
+      })
+    }
+    // macOS has no default menu at all, so the standard edit roles — and with
+    // them Cmd+C/V/A everywhere in the app — only exist once this is installed.
+    installApplicationMenu()
     const memory = new ProjectMemory(app.getPath('userData'))
-    const ompPath = findOmp() ?? 'omp'
+    const settings = new SettingsStore(app.getPath('userData'))
+    // An explicit path in settings wins over detection — it is the escape hatch
+    // for installs the probe order doesn't cover.
+    const ompPath = settings.get().ompPathOverride ?? findOmp() ?? 'omp'
     const host = new AgentHost({ ompPath, onLog: (msg) => console.log('[omp]', msg) })
-    registerIpc(host, memory, ompPath, installUpdate)
-    setupUpdater((status: UpdateStatus) => {
-      for (const win of BrowserWindow.getAllWindows()) {
-        win.webContents.send('omp:update_status', status)
-      }
-    })
+    registerIpc(host, memory, ompPath, installUpdate, settings)
+    if (settings.get().autoCheckUpdates) {
+      setupUpdater((status: UpdateStatus) => {
+        for (const win of BrowserWindow.getAllWindows()) {
+          win.webContents.send('omp:update_status', status)
+        }
+      })
+    }
     createWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })
   })
-  app.on('window-all-closed', () => app.quit())
+  // Closing the last window quits everywhere except macOS, where an app is
+  // expected to stay in the Dock — `activate` above rebuilds the window.
+  app.on('window-all-closed', () => {
+    if (!isMac) app.quit()
+  })
 }

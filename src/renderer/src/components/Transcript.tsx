@@ -1,11 +1,15 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { useAppStore } from '../store'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useAppStore, searchMatches } from '../store'
 import { MessageView } from './MessageView'
 
 export function Transcript(): React.JSX.Element {
   const messages = useAppStore((s) => s.messages)
   const isStreaming = useAppStore((s) => s.isStreaming)
+  const searchOpen = useAppStore((s) => s.searchOpen)
+  const searchQuery = useAppStore((s) => s.searchQuery)
+  const searchMatchIndex = useAppStore((s) => s.searchMatchIndex)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const activeMatchRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const [showJump, setShowJump] = useState(false)
   // A user bubble with no agent reply (rejected prompt) should offer recovery,
@@ -15,6 +19,20 @@ export function Transcript(): React.JSX.Element {
   useEffect(() => {
     if (pinned.current) bottomRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages])
+
+  const matches = useMemo(
+    () => (searchOpen ? searchMatches(messages, searchQuery) : []),
+    [searchOpen, messages, searchQuery]
+  )
+  const matchIds = useMemo(() => new Set(matches), [matches])
+  // The store's index can outrun the match list when the transcript grows or
+  // shrinks under an open search, so clamp rather than render nothing.
+  const activeMatchId = matches.length > 0 ? matches[Math.min(searchMatchIndex, matches.length - 1)] : null
+
+  useEffect(() => {
+    if (!activeMatchId) return
+    activeMatchRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [activeMatchId])
 
   useEffect(() => {
     if (isStreaming || messages.length === 0 || messages[messages.length - 1].role !== 'user') {
@@ -47,9 +65,18 @@ export function Transcript(): React.JSX.Element {
           The agent didn't reply to your last message — it may have rejected the prompt. Try again, or switch sessions on the left.
         </div>
       )}
-      {messages.map((m) => (
-        <MessageView key={m.id} message={m} />
-      ))}
+      {messages.map((m) => {
+        const active = m.id === activeMatchId
+        return (
+          <div
+            key={m.id}
+            ref={active ? activeMatchRef : null}
+            className={`transcript-row${matchIds.has(m.id) ? ' search-hit' : ''}${active ? ' search-hit-active' : ''}`}
+          >
+            <MessageView message={m} />
+          </div>
+        )
+      })}
       {isStreaming && <div className="streaming-dot" />}
       <div ref={bottomRef} />
       {showJump && (

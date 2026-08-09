@@ -1,0 +1,117 @@
+/* ============================================================
+   Diff viewer — file edits inside tool cards.
+   Every colour comes from the global tokens, so this follows the
+   app theme instead of pinning its own greens and reds.
+   ============================================================ */
+
+.diff {
+  margin: 10px 0 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.diff-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+}
+.diff-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: Consolas, 'Cascadia Mono', monospace;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.diff-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--bg-hover);
+  font-size: 10.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.diff-stat-add { color: var(--ok); }
+.diff-stat-del { color: var(--err); }
+/* in the collapsed card header it sits right after the tool name */
+.tool-card-head .diff-stat { margin-left: 2px; }
+
+.diff-note {
+  padding: 5px 10px;
+  background: var(--warn-soft);
+  border-bottom: 1px solid var(--border);
+  color: var(--warn);
+  font-size: 11.5px;
+}
+
+.diff-body {
+  max-height: 420px;
+  overflow-y: auto;
+  font-family: Consolas, 'Cascadia Mono', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.diff-row {
+  display: grid;
+  grid-template-columns: 42px 42px 14px minmax(0, 1fr);
+  min-height: 18px;
+}
+.diff-row.add { background: var(--ok-soft); }
+.diff-row.del { background: var(--err-soft); }
+.diff-row.add .diff-sign { color: var(--ok); }
+.diff-row.del .diff-sign { color: var(--err); }
+
+.diff-ln {
+  padding: 0 6px;
+  text-align: right;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+.diff-ln:nth-child(2) { border-right: 1px solid var(--border); }
+.diff-sign { text-align: center; color: var(--text-faint); user-select: none; }
+.diff-text {
+  min-width: 0;
+  padding: 0 10px 0 4px;
+  /* long lines wrap inside the card — the chat column must never widen */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.diff-sep {
+  padding: 3px 10px;
+  background: var(--bg-hover);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.diff-sep:first-child { border-top: none; }
+
+.diff-toggle {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg-raised);
+  border: none;
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background var(--dur-1) ease, color var(--dur-1) ease;
+}
+.diff-toggle:hover { background: var(--bg-hover); color: var(--text); }

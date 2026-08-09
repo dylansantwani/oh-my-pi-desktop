@@ -11,8 +11,70 @@ import { UiRequestModal } from './components/UiRequestModal'
 import { Toasts } from './components/Toasts'
 import { UpdateBanner } from './components/UpdateBanner'
 import { CommandPalette } from './components/CommandPalette'
+import { SearchBar } from './components/SearchBar'
+import { SettingsPanel } from './components/SettingsPanel'
+import { applyTheme, installTheme, prefersDark } from './lib/theme'
+import type { AppSettings, MenuCommand } from '../../shared/omp-api'
+
+/** The right panel is the third grid track of .app-body. Collapsing it has to
+ *  drop the track too, otherwise the chat keeps a 320px dead margin. */
+const COLLAPSED_BODY = { gridTemplateColumns: '264px minmax(0, 1fr)' }
+
+function focusComposer(): void {
+  const ta = document.getElementById('composer-input') as HTMLTextAreaElement | null
+  if (ta && !ta.disabled) ta.focus()
+}
+
+function runMenuCommand(command: MenuCommand): void {
+  const s = useAppStore.getState()
+  switch (command) {
+    case 'new_session':
+      void s.newSession()
+      break
+    case 'open_project':
+      void s.pickProjectAndConnect()
+      break
+    case 'command_palette':
+      void s.setPaletteOpen(!s.paletteOpen)
+      break
+    case 'focus_composer':
+      focusComposer()
+      break
+    case 'export_html':
+      void s.exportHtml()
+      break
+    case 'toggle_right_panel':
+      s.toggleRightPanel()
+      break
+    case 'find_in_transcript':
+      s.setSearchOpen(true)
+      break
+    case 'settings':
+      s.setSettingsOpen(true)
+      break
+  }
+}
 
 export default function App(): React.JSX.Element {
+  const rightPanelOpen = useAppStore((s) => s.rightPanelOpen)
+  const settingsOpen = useAppStore((s) => s.settingsOpen)
+  useEffect(() => {
+    // Theme lives on the document root, not in React state — the tokens have to
+    // be in place before first paint, and every window shares one settings file,
+    // so repaint on the broadcast rather than on a local write.
+    let current: Pick<AppSettings, 'theme' | 'fontSize'> = { theme: 'system', fontSize: 14 }
+    const stopFollowingOs = installTheme(() => current)
+    const apply = (s: AppSettings): void => {
+      current = s
+      applyTheme(s, document.documentElement, prefersDark())
+    }
+    void window.omp.getSettings().then(apply)
+    const off = window.omp.onSettingsChanged(apply)
+    return () => {
+      off()
+      stopFollowingOs()
+    }
+  }, [])
   useEffect(() => {
     void (async () => {
       const remembered = await window.omp.recallProject()
@@ -26,27 +88,25 @@ export default function App(): React.JSX.Element {
       }
     })()
   }, [])
+  useEffect(() => window.omp.onMenuCommand(runMenuCommand), [])
   useEffect(() => {
+    // Escape is all that is left here. Every chord this handler used to own
+    // (Cmd/Ctrl+K/N/O/L) is now declared as an accelerator by the application
+    // menu, and on macOS the menu item *and* the page both see the keystroke —
+    // so keeping the DOM copies ran each command twice (two new sessions, two
+    // project pickers). Rather than dedupe two racing sources, the menu is the
+    // single source of truth for anything it binds and the DOM handler keeps
+    // only the keys no menu item can claim. A bare Escape is one of them.
     const onKey = (e: KeyboardEvent): void => {
-      if (!(e.ctrlKey || e.metaKey)) {
-        if (e.key === 'Escape') void useAppStore.getState().setPaletteOpen(false)
+      if (e.key !== 'Escape') return
+      const s = useAppStore.getState()
+      // Search overlays the transcript above the palette; dismiss the topmost
+      // surface only, so one Escape never closes two things.
+      if (s.searchOpen) {
+        s.setSearchOpen(false)
         return
       }
-      const key = e.key.toLowerCase()
-      if (key === 'k') {
-        e.preventDefault()
-        void useAppStore.getState().setPaletteOpen(!useAppStore.getState().paletteOpen)
-      } else if (key === 'n') {
-        e.preventDefault()
-        void useAppStore.getState().newSession()
-      } else if (key === 'o') {
-        e.preventDefault()
-        void useAppStore.getState().pickProjectAndConnect()
-      } else if (key === 'l') {
-        e.preventDefault()
-        const ta = document.getElementById('composer-input') as HTMLTextAreaElement | null
-        if (ta && !ta.disabled) ta.focus()
-      }
+      void s.setPaletteOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -54,17 +114,19 @@ export default function App(): React.JSX.Element {
   return (
     <div className="app">
       <TopBar />
-      <div className="app-body">
+      <div className="app-body" style={rightPanelOpen ? undefined : COLLAPSED_BODY}>
         <Sidebar />
         <main className="chat">
+          <SearchBar />
           <Transcript />
           <Composer />
         </main>
-        <RightPanel />
+        {rightPanelOpen && <RightPanel />}
       </div>
       <StatusBar />
       <UpdateBanner />
       <CommandPalette />
+      <SettingsPanel open={settingsOpen} onClose={() => useAppStore.getState().setSettingsOpen(false)} />
       <UiRequestModal />
       <FileViewer />
       <Toasts />

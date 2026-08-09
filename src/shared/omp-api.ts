@@ -1,6 +1,25 @@
 export type ReadFileResult = { ok: true; content: string; size: number } | { ok: false; error: string }
 
+/** Channel the application menu uses to hand a command to the renderer. Shared
+ *  so the main-process emitter and the preload subscriber cannot drift apart. */
+export const MENU_COMMAND_CHANNEL = 'omp:menu_command'
+
+/** Every command the application menu can emit. The menu only decides *when* a
+ *  command fires — the renderer owns what each one actually does. */
+export type MenuCommand =
+  | 'new_session'
+  | 'open_project'
+  | 'command_palette'
+  | 'focus_composer'
+  | 'export_html'
+  | 'toggle_right_panel'
+  | 'find_in_transcript'
+  | 'settings'
+
 export interface OmpApi {
+  /** `process.platform`, captured when the bridge is built. The renderer needs
+   *  it to inset the top bar for the macOS traffic lights. */
+  platform: string
   connect(project: string): Promise<{ ok: true } | { ok: false; error: string }>
   disconnect(): Promise<void>
   getStatus(): Promise<{ status: string; project: string | null; pid: number | null }>
@@ -30,7 +49,22 @@ export interface OmpApi {
   onUiRequest(cb: (req: Record<string, unknown>) => void): () => void
   onStatus(cb: (status: string) => void): () => void
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
+  onMenuCommand(cb: (command: MenuCommand) => void): () => void
   installUpdate(): Promise<void>
+  getSettings(): Promise<AppSettings>
+  updateSettings(patch: Partial<AppSettings>): Promise<AppSettings>
+  resetSettings(): Promise<AppSettings>
+  onSettingsChanged(cb: (settings: AppSettings) => void): () => void
+}
+
+export type ThemeMode = 'system' | 'dark' | 'light'
+
+export interface AppSettings {
+  theme: ThemeMode
+  fontSize: number
+  notifyOnTurnEnd: boolean
+  autoCheckUpdates: boolean
+  ompPathOverride: string | null
 }
 
 export type UpdateStatus =

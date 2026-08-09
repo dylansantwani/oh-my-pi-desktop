@@ -5,6 +5,7 @@ import { useAppStore } from '../../src/renderer/src/store'
 import { MessageView } from '../../src/renderer/src/components/MessageView'
 import App from '../../src/renderer/src/App'
 import type { TranscriptMessage } from '../../src/renderer/src/lib/transcript'
+import type { MenuCommand } from '../../src/shared/omp-api'
 
 const userMsg: TranscriptMessage = { id: 'u1', role: 'user', text: 'my question', thinking: '', toolCalls: [], complete: true }
 const replyMsg: TranscriptMessage = { id: 'a1', role: 'assistant', text: 'the answer', thinking: '', toolCalls: [], complete: true }
@@ -34,7 +35,15 @@ describe('MessageView copy button', () => {
   })
 })
 
-describe('Ctrl+L composer shortcut', () => {
+/** Cmd/Ctrl+L is declared by the application menu now, so the shortcut reaches
+ *  the renderer as a menu command rather than as a keydown. */
+function emitMenuCommand(command: MenuCommand): void {
+  const cb = vi.mocked(window.omp.onMenuCommand).mock.calls.at(-1)?.[0]
+  if (!cb) throw new Error('App never subscribed to menu commands')
+  cb(command)
+}
+
+describe('focus composer shortcut', () => {
   beforeEach(() => {
     useAppStore.setState({ status: 'connected', isStreaming: false, paletteOpen: false, project: null })
   })
@@ -45,7 +54,7 @@ describe('Ctrl+L composer shortcut', () => {
     expect(ta).toBeTruthy()
     ta.blur()
     expect(document.activeElement).not.toBe(ta)
-    fireEvent.keyDown(window, { key: 'l', ctrlKey: true })
+    emitMenuCommand('focus_composer')
     expect(document.activeElement).toBe(ta)
   })
 
@@ -54,7 +63,7 @@ describe('Ctrl+L composer shortcut', () => {
     render(<App />)
     const ta = document.getElementById('composer-input') as HTMLTextAreaElement
     expect(ta.disabled).toBe(true)
-    fireEvent.keyDown(window, { key: 'l', ctrlKey: true })
+    emitMenuCommand('focus_composer')
     expect(document.activeElement).not.toBe(ta)
   })
 })

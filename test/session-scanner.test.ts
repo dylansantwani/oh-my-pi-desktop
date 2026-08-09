@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mkdtempSync, writeFileSync, mkdirSync, utimesSync } from 'fs'
+import { mkdtempSync, writeFileSync, mkdirSync, utimesSync, symlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { scanSessions } from '../src/main/session-scanner'
@@ -51,6 +51,17 @@ describe('scanSessions', () => {
     expect(scanSessions(dir, 'C:\\Users\\dylan\\downloads\\claude')).toEqual([])
   })
 
+  it('matches posix project dirs and ignores a trailing separator', () => {
+    const dir = makeSessionDir()
+    const bucket = join(dir, 'abs-posix')
+    mkdirSync(bucket, { recursive: true })
+    const f = join(bucket, '1_posix.jsonl')
+    writeFileSync(f, header('/Users/dylan/Downloads/claude') + '\n')
+    expect(scanSessions(dir, '/Users/dylan/Downloads/claude')).toHaveLength(1)
+    expect(scanSessions(dir, '/Users/dylan/Downloads/claude/')).toHaveLength(1)
+    expect(scanSessions(dir, '/Users/dylan/Downloads/other')).toEqual([])
+  })
+
   it('sorts by mtime descending', () => {
     const dir = makeSessionDir()
     const bucket = join(dir, 'abs-x')
@@ -64,5 +75,36 @@ describe('scanSessions', () => {
     utimesSync(old, new Date(), new Date(Date.now() - 60_000))
     const out = scanSessions(dir, 'C:\\Users\\dylan\\downloads\\claude')
     expect(out.map((s) => s.path)).toEqual([fresh, old])
+  })
+})
+
+describe('scanSessions symlink handling', () => {
+  it('matches a session whose header cwd is the symlinked spelling of the project dir', () => {
+    // macOS records /tmp in CLI-started sessions while the GUI folder picker
+    // hands back /private/tmp; both must land in the same project group.
+    const root = mkdtempSync(join(tmpdir(), 'omp-link-'))
+    const real = join(root, 'real-project')
+    const link = join(root, 'linked-project')
+    mkdirSync(real, { recursive: true })
+    try {
+      symlinkSync(real, link, 'dir')
+    } catch {
+      return // no symlink privilege (unprivileged Windows) — nothing to assert
+    }
+    const dir = makeSessionDir()
+    const bucket = join(dir, 'abs-link')
+    mkdirSync(bucket, { recursive: true })
+    writeFileSync(join(bucket, '1_link.jsonl'), header(link) + '\n')
+
+    expect(scanSessions(dir, real)).toHaveLength(1)
+    expect(scanSessions(dir, link)).toHaveLength(1)
+  })
+
+  it('still excludes an unrelated project that merely shares a parent', () => {
+    const dir = makeSessionDir()
+    const bucket = join(dir, 'abs-sib')
+    mkdirSync(bucket, { recursive: true })
+    writeFileSync(join(bucket, '1_a.jsonl'), header('/Users/dylan/proj-one') + '\n')
+    expect(scanSessions(dir, '/Users/dylan/proj-two')).toEqual([])
   })
 })

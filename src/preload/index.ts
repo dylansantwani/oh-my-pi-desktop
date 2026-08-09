@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { OmpApi } from '../shared/omp-api'
+import { MENU_COMMAND_CHANNEL, type OmpApi } from '../shared/omp-api'
 
 function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
   const listener = (_e: Electron.IpcRendererEvent, payload: unknown): void => cb(payload as T)
@@ -8,6 +8,9 @@ function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
 }
 
 const api: OmpApi = {
+  // A plain value, not a call: the renderer needs this during first paint to
+  // decide whether to inset the top bar for the macOS traffic lights.
+  platform: process.platform,
   connect: (project) => ipcRenderer.invoke('omp:connect', project),
   disconnect: () => ipcRenderer.invoke('omp:disconnect'),
   getStatus: () => ipcRenderer.invoke('omp:status'),
@@ -37,7 +40,12 @@ const api: OmpApi = {
   onUiRequest: (cb) => subscribe('omp:ui_request', cb),
   onStatus: (cb) => subscribe('omp:status', cb),
   onUpdateStatus: (cb) => subscribe('omp:update_status', cb),
-  installUpdate: () => ipcRenderer.invoke('omp:update_install')
+  onMenuCommand: (cb) => subscribe(MENU_COMMAND_CHANNEL, cb),
+  installUpdate: () => ipcRenderer.invoke('omp:update_install'),
+  getSettings: () => ipcRenderer.invoke('omp:get_settings'),
+  updateSettings: (patch) => ipcRenderer.invoke('omp:update_settings', patch),
+  resetSettings: () => ipcRenderer.invoke('omp:reset_settings'),
+  onSettingsChanged: (cb) => subscribe('omp:settings_changed', cb)
 }
 
 contextBridge.exposeInMainWorld('omp', api)
