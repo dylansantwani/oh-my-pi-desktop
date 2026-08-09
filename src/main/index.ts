@@ -1,5 +1,5 @@
 import { app, BrowserWindow, screen, shell } from 'electron'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { AgentHost } from './agent-host'
 import { registerIpc } from './ipc'
@@ -51,7 +51,29 @@ function loadWindowState(): { bounds: Electron.Rectangle; maximized: boolean } {
   return { bounds, maximized: saved.maximized }
 }
 
-function createWindow(): void {
+/** Push to every open window. The window list is read at send time, not
+ *  captured, because windows come and go over the life of the app. */
+function broadcast(channel: string, payload: unknown): void {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(channel, payload)
+  }
+}
+
+// Nothing in the main process handled these before: a single unexpected throw —
+// a teardown 'error' with no listener, a rejected background promise — killed
+// the whole app with no window, no message and no log. Stay up and say so.
+process.on('uncaughtException', (err) => {
+  console.error('[main] uncaught exception', err)
+  broadcast('omp:agent_error', { message: `Unexpected error: ${err?.message ?? String(err)}` })
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('[main] unhandled rejection', reason)
+  broadcast('omp:agent_error', {
+    message: `Unexpected error: ${reason instanceof Error ? reason.message : String(reason)}`
+  })
+})
+
+function createWindow(): BrowserWindow {
   const { bounds, maximized } = loadWindowState()
   const win = new BrowserWindow({
     width: bounds.width,
@@ -109,6 +131,32 @@ function createWindow(): void {
   } else {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
+  return win
+}
+
+/** Resolves once the renderer has painted — or after a grace period, so work
+ *  queued behind it is never stranded by a render process that failed to load. */
+function firstPaint(win: BrowserWindow): Promise<void> {
+  let resolve!: () => void
+  const promise = new Promise<void>((r) => {
+    resolve = r
+  })
+  win.webContents.once('did-finish-load', () => resolve())
+  win.once('closed', () => resolve())
+  setTimeout(resolve, 5000).unref()
+  return promise
+}
+
+/** An explicit path in settings wins over detection — it is the escape hatch for
+ *  installs the probe order doesn't cover — and needs no probing at all.
+ *  Detection itself is a chain of *synchronous* `--version` probes (up to seven
+ *  at a 5s timeout each, plus a login-shell PATH lookup); running it ahead of
+ *  createWindow() meant a slow machine showed no window at all for tens of
+ *  seconds, so it waits for first paint and callers await the promise. */
+function resolveOmpPath(settings: SettingsStore, painted: Promise<void>): Promise<string> {
+  const override = settings.get().ompPathOverride
+  if (override) return Promise.resolve(override)
+  return painted.then(() => findOmp() ?? 'omp')
 }
 
 const gotLock = app.requestSingleInstanceLock()
@@ -136,19 +184,24 @@ if (!gotLock) {
     installApplicationMenu()
     const memory = new ProjectMemory(app.getPath('userData'))
     const settings = new SettingsStore(app.getPath('userData'))
-    // An explicit path in settings wins over detection — it is the escape hatch
-    // for installs the probe order doesn't cover.
-    const ompPath = settings.get().ompPathOverride ?? findOmp() ?? 'omp'
-    const host = new AgentHost({ ompPath, onLog: (msg) => console.log('[omp]', msg) })
+    // Window first: everything below either awaits the path or doesn't need it,
+    // so nothing here can keep the app from painting.
+    const win = createWindow()
+    const ompPath = resolveOmpPath(settings, firstPaint(win))
+    const host = new AgentHost({
+      ompPath: () => ompPath,
+      onLog: (message) => {
+        console.log('[omp]', message)
+        // These used to stop at console.log, so a user whose omp started but
+        // could not work (missing API key, bad config) saw a "connected" UI
+        // that silently did nothing.
+        broadcast('omp:agent_error', { message })
+      }
+    })
     registerIpc(host, memory, ompPath, installUpdate, settings)
     if (settings.get().autoCheckUpdates) {
-      setupUpdater((status: UpdateStatus) => {
-        for (const win of BrowserWindow.getAllWindows()) {
-          win.webContents.send('omp:update_status', status)
-        }
-      })
+      setupUpdater((status: UpdateStatus) => broadcast('omp:update_status', status))
     }
-    createWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()
     })

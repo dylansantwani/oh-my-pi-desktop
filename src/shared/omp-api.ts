@@ -48,6 +48,10 @@ export interface OmpApi {
   onEvent(cb: (frame: Record<string, unknown>) => void): () => void
   onUiRequest(cb: (req: Record<string, unknown>) => void): () => void
   onStatus(cb: (status: string) => void): () => void
+  /** Errors and stderr from the agent process. These used to go only to the
+   *  main process console, so an `omp` that started but failed left the UI
+   *  looking connected with no explanation anywhere. */
+  onAgentError(cb: (payload: { message: string }) => void): () => void
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
   onMenuCommand(cb: (command: MenuCommand) => void): () => void
   installUpdate(): Promise<void>
