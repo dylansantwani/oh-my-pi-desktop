@@ -103,14 +103,14 @@ describe('resolveShellPath', () => {
     ['no stdout at all', { status: 0, stdout: null }]
   ])('falls back to the inherited PATH on %s', (_label, result) => {
     spawnSyncMock.mockReturnValue(result as never)
-    expect(resolveShellPath()).toBe('/usr/bin:/bin')
+    expect(resolveShellPath()).toBe(p('/usr/bin', '/bin'))
   })
 
   it('falls back to the inherited PATH when spawnSync throws', () => {
     spawnSyncMock.mockImplementation(() => {
       throw new Error('EMFILE')
     })
-    expect(resolveShellPath()).toBe('/usr/bin:/bin')
+    expect(resolveShellPath()).toBe(p('/usr/bin', '/bin'))
   })
 
   it('keeps the shell PATH even when the login shell exits non-zero', () => {
