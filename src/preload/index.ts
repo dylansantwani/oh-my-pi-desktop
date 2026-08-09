@@ -39,6 +39,7 @@ const api: OmpApi = {
   onEvent: (cb) => subscribe('omp:event', cb),
   onUiRequest: (cb) => subscribe('omp:ui_request', cb),
   onStatus: (cb) => subscribe('omp:status', cb),
+  onAgentError: (cb) => subscribe('omp:agent_error', cb),
   onUpdateStatus: (cb) => subscribe('omp:update_status', cb),
   onMenuCommand: (cb) => subscribe(MENU_COMMAND_CHANNEL, cb),
   installUpdate: () => ipcRenderer.invoke('omp:update_install'),
