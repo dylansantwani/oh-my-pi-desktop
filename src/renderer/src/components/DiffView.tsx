@@ -12,8 +12,10 @@ const SIGN: Record<DiffRow['kind'], string> = { add: '+', del: '-', ctx: ' ' }
 type DiffItem = { kind: 'sep'; text: string } | { kind: 'row'; row: DiffRow }
 
 export function DiffStatPill({ stat }: { stat: DiffStat }): React.JSX.Element {
+  const summary = `${stat.added} added, ${stat.removed} removed`
   return (
-    <span className="diff-stat" title={`${stat.added} added, ${stat.removed} removed`}>
+    // "+3 −1" is meaningless read out sign by sign, so the pill names itself.
+    <span className="diff-stat" role="img" aria-label={summary} title={summary}>
       <span className="diff-stat-add">+{stat.added}</span>
       <span className="diff-stat-del">−{stat.removed}</span>
     </span>
@@ -56,7 +58,7 @@ export function DiffView({ path, hunks, degraded = false }: { path: string; hunk
         )}
       </div>
       {collapsible && (
-        <button className="diff-toggle" onClick={() => setShowAll((s) => !s)}>
+        <button className="diff-toggle" aria-expanded={showAll} onClick={() => setShowAll((s) => !s)}>
           {showAll ? 'Show less' : `Show all ${lineCount} lines`}
         </button>
       )}

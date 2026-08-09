@@ -17,9 +17,12 @@ interface AppState {
   isStreaming: boolean
   uiRequest: Record<string, unknown> | null
   toasts: { id: number; text: string; kind: 'error' | 'info' }[]
-  model: { provider: string; id: string } | null
+  model: { provider: string; id: string; name?: string } | null
   thinkingLevel: string
-  models: { provider: string; id: string }[]
+  /** Populated once per connection. The Context panel used to fetch this into
+   *  its own local state, so the composer's selector would have had a second,
+   *  separately-timed copy of the same list. */
+  models: { provider: string; id: string; name?: string; contextWindow?: number }[]
   fastMode: boolean
   contextUsage: { tokens: number; contextWindow: number; percent: number } | null
   tokensPerSecond: number | null
@@ -34,6 +37,15 @@ interface AppState {
   searchOpen: boolean
   searchQuery: string
   searchMatchIndex: number
+  /** Last error the agent process reported. Unlike a toast this persists until
+   *  dismissed or superseded — a missing/broken `omp` used to leave no trace
+   *  after six seconds. */
+  agentError: string | null
+  /** False once the oldest page has been fetched — drives the "load older"
+   *  control and stops it re-requesting page one. */
+  canLoadOlder: boolean
+  loadingOlder: boolean
+  dismissAgentError: () => void
   sendPrompt: (text: string) => Promise<void>
   abort: () => Promise<void>
   steer: (text: string) => Promise<void>
@@ -42,6 +54,7 @@ interface AppState {
   setModel: (provider: string, id: string) => Promise<void>
   setThinkingLevel: (level: string) => Promise<void>
   setFastMode: (enabled: boolean) => Promise<void>
+  refreshModels: () => Promise<void>
   refreshSessions: () => Promise<void>
   pickProjectAndConnect: () => Promise<void>
   connect: (project: string) => Promise<void>
@@ -63,6 +76,16 @@ interface AppState {
 }
 
 let toastSeq = 0
+
+/** ipcRenderer.invoke wraps every rejection as
+ *  "Error invoking remote method 'omp:prompt': Error: Agent not connected".
+ *  Main normalises the tail, but the wrapper is added inside invoke itself, so
+ *  only the renderer can take it off — and none of it is anything a user should
+ *  be asked to read. */
+function errText(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e)
+  return raw.replace(/^Error invoking remote method '[^']+':\s*/, '').replace(/^Error:\s*/, '').trim()
+}
 
 /** Ids of the transcript messages matching `query`, in transcript order.
  *  Case-insensitive substring, and only over `text`: `thinking` lives behind a
@@ -106,6 +129,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchOpen: false,
   searchQuery: '',
   searchMatchIndex: 0,
+  agentError: null,
+  canLoadOlder: false,
+  loadingOlder: false,
+
+  dismissAgentError: () => set({ agentError: null }),
 
   toast: (text, kind = 'info') => {
     const id = ++toastSeq
@@ -120,7 +148,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       await api.prompt(trimmed)
     } catch (e) {
-      get().toast(`Prompt failed: ${(e as Error).message}`, 'error')
+      get().toast(`Prompt failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -128,7 +156,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       await api.abort()
     } catch (e) {
-      get().toast(`Abort failed: ${(e as Error).message}`, 'error')
+      get().toast(`Abort failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -136,7 +164,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       await api.steer(text.trim())
     } catch (e) {
-      get().toast(`Steer failed: ${(e as Error).message}`, 'error')
+      get().toast(`Steer failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -144,7 +172,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       await api.followUp(text.trim())
     } catch (e) {
-      get().toast(`Follow-up failed: ${(e as Error).message}`, 'error')
+      get().toast(`Follow-up failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -158,6 +186,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         fastModeEnabled?: boolean
         fastModeActive?: boolean
         sessionName?: string
+        isStreaming?: boolean
       }
       set({
         model: st.model ?? null,
@@ -165,7 +194,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         contextUsage: st.contextUsage ?? null,
         tokensPerSecond: st.tokensPerSecond ?? null,
         fastMode: st.fastModeEnabled ?? st.fastModeActive ?? false,
-        sessionName: st.sessionName ?? get().sessionName
+        sessionName: st.sessionName ?? get().sessionName,
+        // The agent knows whether a turn is actually running. Deriving this only
+        // from agent_start/agent_end meant a single missed end event stranded the
+        // UI mid-turn — the streaming dot pulsing over an idle, empty chat, with
+        // the empty state suppressed behind it. Every refresh now reconciles.
+        isStreaming: typeof st.isStreaming === 'boolean' ? st.isStreaming : get().isStreaming
       })
     } catch {
       /* not connected yet — ignore */
@@ -175,9 +209,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setModel: async (provider, id) => {
     try {
       await api.setModel(provider, id)
-      set({ model: { provider, id } })
+      // Carry the friendly name over from the catalogue so the selector's label
+      // doesn't drop back to a raw id until the next get_state lands.
+      const known = get().models.find((m) => m.provider === provider && m.id === id)
+      set({ model: { provider, id, name: known?.name } })
     } catch (e) {
-      get().toast(`Model change failed: ${(e as Error).message}`, 'error')
+      get().toast(`Model change failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -186,7 +223,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       await api.setThinkingLevel(level)
       set({ thinkingLevel: level })
     } catch (e) {
-      get().toast(`Thinking level failed: ${(e as Error).message}`, 'error')
+      get().toast(`Thinking level failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -195,7 +232,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       await api.setFastMode(enabled)
       set({ fastMode: enabled })
     } catch (e) {
-      get().toast(`Fast mode failed: ${(e as Error).message}`, 'error')
+      get().toast(`Fast mode failed: ${errText(e)}`, 'error')
+    }
+  },
+
+  refreshModels: async () => {
+    try {
+      const data = (await api.getModels()) as
+        | { models?: { provider: string; id: string; name?: string; contextWindow?: number }[] }
+        | { provider: string; id: string }[]
+      const list = Array.isArray(data) ? data : Array.isArray(data.models) ? data.models : []
+      set({ models: list })
+    } catch {
+      /* not connected yet — the selector falls back to the active model */
     }
   },
 
@@ -206,7 +255,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const sessions = await api.listSessions(project)
       set({ sessions })
     } catch (e) {
-      get().toast(`Session list failed: ${(e as Error).message}`, 'error')
+      get().toast(`Session list failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -223,27 +272,64 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     set({ project })
     window.omp.rememberProject(project).catch((e) => {
-      get().toast(`Couldn't remember project: ${(e as Error).message}`, 'error')
+      get().toast(`Couldn't remember project: ${errText(e)}`, 'error')
     })
     await get().refreshSessions()
   },
 
   switchSession: async (path) => {
+    // Re-selecting the open session used to re-issue the RPC and reload its
+    // whole history. Rename opens by activating a row, so this runs on every
+    // double-click too.
+    if (get().activeSessionPath === path) return
     try {
       await api.switchSession(path)
-      set({ activeSessionPath: path, messages: [], isStreaming: false, nextCursor: null, sessionFiles: [], openFilePath: null })
+      // Todos, the session name and context usage all belong to the session
+      // being left; keeping them meant the right panel showed the previous
+      // session's plan, and the Context tab's name field would rename the new
+      // session to the old title on the next blur.
+      set({
+        activeSessionPath: path,
+        messages: [],
+        isStreaming: false,
+        nextCursor: null,
+        sessionFiles: [],
+        openFilePath: null,
+        todos: [],
+        sessionName: '',
+        contextUsage: null,
+        tokensPerSecond: null,
+        canLoadOlder: true
+      })
       await get().loadOlder()
+      await get().refreshState()
     } catch (e) {
-      get().toast(`Switch failed: ${(e as Error).message}`, 'error')
+      get().toast(`Switch failed: ${errText(e)}`, 'error')
     }
   },
 
   newSession: async () => {
     try {
       await api.newSession()
-      set({ activeSessionPath: null, messages: [], isStreaming: false, sessionName: '', nextCursor: null, sessionFiles: [], openFilePath: null })
+      set({
+        activeSessionPath: null,
+        messages: [],
+        isStreaming: false,
+        sessionName: '',
+        nextCursor: null,
+        sessionFiles: [],
+        openFilePath: null,
+        todos: [],
+        // Cleared because they describe the session being left — but a new
+        // session still has a context window and a system prompt in it, so the
+        // readout has to be refetched below rather than left blank.
+        contextUsage: null,
+        tokensPerSecond: null,
+        canLoadOlder: false
+      })
+      await get().refreshState()
     } catch (e) {
-      get().toast(`New session failed: ${(e as Error).message}`, 'error')
+      get().toast(`New session failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -253,7 +339,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ sessionName: name })
       void get().refreshSessions()
     } catch (e) {
-      get().toast(`Rename failed: ${(e as Error).message}`, 'error')
+      get().toast(`Rename failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -262,7 +348,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       await api.exportHtml()
       get().toast('Session exported to HTML', 'info')
     } catch (e) {
-      get().toast(`Export failed: ${(e as Error).message}`, 'error')
+      get().toast(`Export failed: ${errText(e)}`, 'error')
     }
   },
 
@@ -304,7 +390,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loadOlder: async () => {
-    const { nextCursor } = get()
+    // Nothing called this a second time before, so `nextCursor` was written and
+    // never read and anything past the first 100 messages was unreachable. Now
+    // the transcript offers a "load older" control, so guard against both
+    // re-fetching page one and overlapping requests.
+    const { nextCursor, canLoadOlder, loadingOlder } = get()
+    if (!canLoadOlder || loadingOlder) return
+    set({ loadingOlder: true })
     try {
       const page = (await api.getMessagesPage(nextCursor ?? undefined, 100)) as {
         messages?: unknown[]
@@ -315,10 +407,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       const converted = historyToTranscript(list)
       set((s) => ({
         messages: [...converted, ...s.messages],
-        nextCursor: page.nextCursor ?? null
+        nextCursor: page.nextCursor ?? null,
+        canLoadOlder: page.nextCursor != null
       }))
     } catch (e) {
-      get().toast(`History load failed: ${(e as Error).message}`, 'error')
+      get().toast(`History load failed: ${errText(e)}`, 'error')
+    } finally {
+      set({ loadingOlder: false })
     }
   },
 
@@ -326,7 +421,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       await api.uiResponse(id, value, confirmed, cancelled)
     } catch (e) {
-      get().toast(`UI response failed: ${(e as Error).message}`, 'error')
+      get().toast(`UI response failed: ${errText(e)}`, 'error')
     } finally {
       set({ uiRequest: null })
     }
@@ -341,8 +436,21 @@ api.onStatus((status) => {
     wasReconnecting = false
     useAppStore.getState().toast('Reconnected to the agent')
   }
-  useAppStore.setState({ status })
-  if (status === 'connected') void useAppStore.getState().refreshState()
+  // An agent that dies mid-turn never sends agent_end, so isStreaming stayed
+  // true forever: the composer kept showing Queue/Interrupt/Abort, Enter routed
+  // to followUp against a fresh process, and the "no reply" recovery hint was
+  // suppressed because it requires !isStreaming. Losing the connection ends the
+  // turn by definition.
+  const lost = status !== 'connected'
+  useAppStore.setState(lost ? { status, isStreaming: false } : { status })
+  if (status === 'connected') {
+    useAppStore.setState({ agentError: null })
+    void useAppStore.getState().refreshState()
+    void useAppStore.getState().refreshModels()
+  }
+})
+api.onAgentError(({ message }) => {
+  useAppStore.setState({ agentError: message })
 })
 api.onEvent((frame) => {
   const s = useAppStore.getState()

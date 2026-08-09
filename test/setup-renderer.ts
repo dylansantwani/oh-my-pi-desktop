@@ -4,9 +4,15 @@ import { vi } from 'vitest'
 // window.omp directly. jsdom tests need a stub installed before any import.
 // Guarded so node-environment tests (the protocol suite) stay untouched.
 if (typeof window !== 'undefined') {
-  // jsdom does not implement scrollIntoView; the Transcript auto-scroll effect
-  // calls it on mount. A no-op is the standard jsdom shim.
+  // jsdom implements neither scrollIntoView nor Element.scrollTo; the Transcript
+  // auto-scroll calls both. No-ops are the standard jsdom shim — scrollTop is a
+  // plain property there, so assigning it keeps the state assertions honest.
   Element.prototype.scrollIntoView = vi.fn()
+  Element.prototype.scrollTo = vi.fn(function (this: Element, options?: ScrollToOptions | number) {
+    if (typeof options === 'object' && options !== null && typeof options.top === 'number') {
+      this.scrollTop = options.top
+    }
+  }) as unknown as Element['scrollTo']
   vi.stubGlobal('omp', {
     connect: vi.fn(async () => ({ ok: true })),
     disconnect: vi.fn(async () => {}),
@@ -36,6 +42,7 @@ if (typeof window !== 'undefined') {
     onEvent: vi.fn(() => () => {}),
     onUiRequest: vi.fn(() => () => {}),
     onStatus: vi.fn(() => () => {}),
+    onAgentError: vi.fn(() => () => {}),
     onUpdateStatus: vi.fn(() => () => {}),
     onMenuCommand: vi.fn(() => () => {}),
     onSettingsChanged: vi.fn(() => () => {}),

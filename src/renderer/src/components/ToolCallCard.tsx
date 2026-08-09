@@ -4,8 +4,24 @@ import type { ToolCallView } from '../lib/transcript'
 import { DiffStatPill, DiffView } from './DiffView'
 import { diffLines, diffStat, extractDiff } from '../lib/diff'
 
+// Arg keys worth showing on the collapsed row, most specific first. A card that
+// says only `read` forces a click to learn *what* was read, which is the one
+// thing you want while skimming a long transcript.
+const SUMMARY_KEYS = ['path', 'file_path', 'filePath', 'file', 'filename', 'command', 'cmd', 'pattern', 'query', 'url']
+
+function summarize(args: unknown): string | null {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return null
+  const rec = args as Record<string, unknown>
+  for (const key of SUMMARY_KEYS) {
+    const v = rec[key]
+    if (typeof v === 'string' && v.trim()) return v.trim().replace(/\s+/g, ' ')
+  }
+  return null
+}
+
 export function ToolCallCard({ tool }: { tool: ToolCallView }): React.JSX.Element {
   const [open, setOpen] = useState(false)
+  const summary = useMemo(() => summarize(tool.args), [tool.args])
   const Icon = tool.status === 'running' ? Loader2 : tool.status === 'ok' ? CheckCircle2 : XCircle
   // File edits render as a diff; an arg shape we cannot read as one — or an
   // edit that changed nothing — keeps the raw-JSON fallback.
@@ -18,10 +34,15 @@ export function ToolCallCard({ tool }: { tool: ToolCallView }): React.JSX.Elemen
   }, [tool.name, tool.args])
   return (
     <div className={`tool-card ${tool.status}`}>
-      <button className="tool-card-head" onClick={() => setOpen((o) => !o)}>
-        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <Icon size={14} className="tool-icon" />
+      <button className="tool-card-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+        <Icon size={14} className="tool-icon" aria-hidden="true" />
         <code>{tool.name}</code>
+        {summary && (
+          <span className="tool-summary ellipsis" title={summary}>
+            {summary}
+          </span>
+        )}
         {diff && <DiffStatPill stat={diff.stat} />}
         <span className="tool-status">{tool.status}</span>
       </button>

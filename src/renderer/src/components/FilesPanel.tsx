@@ -17,7 +17,14 @@ export function FilesPanel(): React.JSX.Element {
   return (
     <div className="files-panel">
       {files.map((f) => (
-        <button key={f.path} className="file-row" onClick={() => setOpenFile(f.path)} title={f.path}>
+        <button
+          key={f.path}
+          className="file-row"
+          onClick={() => setOpenFile(f.path)}
+          title={f.path}
+          // The badge is colour plus an icon, so the edited state rides on the name.
+          aria-label={f.modified ? `${f.name}, edited this session` : f.name}
+        >
           <span className="file-icon">{iconFor(f.name)}</span>
           <span className="ellipsis file-name">{f.name}</span>
           {f.modified && (

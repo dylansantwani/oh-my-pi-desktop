@@ -2,7 +2,9 @@ import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
-import 'highlight.js/styles/github-dark.css'
+// Not highlight.js's own stylesheet: each of those pins a single palette, and
+// the dark one rendered light-theme code at ~1.5:1. See styles/code.css.
+import '../styles/code.css'
 
 function CopyButton({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [copied, setCopied] = useState(false)

@@ -13,7 +13,12 @@ const ACTIONS: PaletteItem[] = [
   { id: 'new', label: 'New session', keywords: 'create start', run: () => void useAppStore.getState().newSession() },
   { id: 'project', label: 'Change project', keywords: 'folder open choose', run: () => void useAppStore.getState().pickProjectAndConnect() },
   { id: 'export', label: 'Export session to HTML', keywords: 'save share', run: () => void useAppStore.getState().exportHtml() },
-  { id: 'refresh', label: 'Refresh state', keywords: 'reload sync model', run: () => void useAppStore.getState().refreshState() }
+  { id: 'refresh', label: 'Refresh state', keywords: 'reload sync model', run: () => void useAppStore.getState().refreshState() },
+  // These three had no route into them except the menu bar, which Windows
+  // hides behind Alt.
+  { id: 'find', label: 'Find in transcript', keywords: 'search locate text', run: () => useAppStore.getState().setSearchOpen(true) },
+  { id: 'panel', label: 'Toggle side panel', keywords: 'todos files context hide show', run: () => useAppStore.getState().toggleRightPanel() },
+  { id: 'settings', label: 'Settings', keywords: 'preferences theme font size omp path update', run: () => useAppStore.getState().setSettingsOpen(true) }
 ]
 
 export function CommandPalette(): React.JSX.Element | null {
@@ -23,6 +28,7 @@ export function CommandPalette(): React.JSX.Element | null {
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (open) {
@@ -36,6 +42,13 @@ export function CommandPalette(): React.JSX.Element | null {
   useEffect(() => {
     setActive(0)
   }, [query])
+
+  // .palette-list caps at 340px and scrolls, but the highlight moved with the
+  // arrow keys while the list stayed put — past ~10 results the selection went
+  // off screen.
+  useEffect(() => {
+    listRef.current?.querySelector('.palette-item.active')?.scrollIntoView({ block: 'nearest' })
+  }, [active, query])
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -85,10 +98,16 @@ export function CommandPalette(): React.JSX.Element | null {
   }
 
   return (
-    <div className="palette-backdrop" onClick={close}>
-      <div className="palette" onClick={(e) => e.stopPropagation()}>
+    <div className="palette-backdrop" onClick={close} role="presentation">
+      <div
+        className="palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="palette-input-row">
-          <Search size={15} className="palette-search-icon" />
+          <Search size={15} className="palette-search-icon" aria-hidden="true" />
           <input
             ref={inputRef}
             className="palette-input"
@@ -96,15 +115,20 @@ export function CommandPalette(): React.JSX.Element | null {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Type a command or search sessions…"
+            aria-label="Type a command or search sessions"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="palette-list"
+            aria-activedescendant={`palette-item-${active}`}
           />
           <kbd>Esc</kbd>
         </div>
-        <div className="palette-list">
+        <div className="palette-list" id="palette-list" role="listbox" ref={listRef}>
           {items.actions.length > 0 && (
             <>
               <div className="palette-section">Actions</div>
               {items.actions.map((item, i) => (
-                <PaletteRow key={item.id} item={item} active={i === active} onHover={() => setActive(i)} onRun={() => { close(); item.run() }} />
+                <PaletteRow key={item.id} item={item} index={i} active={i === active} onHover={() => setActive(i)} onRun={() => { close(); item.run() }} />
               ))}
             </>
           )}
@@ -112,7 +136,7 @@ export function CommandPalette(): React.JSX.Element | null {
             <>
               <div className="palette-section">Sessions</div>
               {items.sessions.map((item, i) => (
-                <PaletteRow key={item.id} item={item} active={items.actions.length + i === active} onHover={() => setActive(items.actions.length + i)} onRun={() => { close(); item.run() }} />
+                <PaletteRow key={item.id} item={item} index={items.actions.length + i} active={items.actions.length + i === active} onHover={() => setActive(items.actions.length + i)} onRun={() => { close(); item.run() }} />
               ))}
             </>
           )}
@@ -128,9 +152,16 @@ export function CommandPalette(): React.JSX.Element | null {
   )
 }
 
-function PaletteRow({ item, active, onHover, onRun }: { item: PaletteItem; active: boolean; onHover: () => void; onRun: () => void }): React.JSX.Element {
+function PaletteRow({ item, index, active, onHover, onRun }: { item: PaletteItem; index: number; active: boolean; onHover: () => void; onRun: () => void }): React.JSX.Element {
   return (
-    <button className={`palette-item ${active ? 'active' : ''}`} onMouseEnter={onHover} onClick={onRun}>
+    <button
+      id={`palette-item-${index}`}
+      role="option"
+      aria-selected={active}
+      className={`palette-item ${active ? 'active' : ''}`}
+      onMouseEnter={onHover}
+      onClick={onRun}
+    >
       <span className="ellipsis">{item.label}</span>
     </button>
   )
