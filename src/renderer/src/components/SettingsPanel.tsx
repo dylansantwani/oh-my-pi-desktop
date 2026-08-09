@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { X, RotateCcw } from 'lucide-react'
 import type { AppSettings, ThemeMode } from '../../../shared/omp-api'
 import '../styles/settings.css'
@@ -35,6 +35,8 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [detectedPath, setDetectedPath] = useState('')
   const [pathDraft, setPathDraft] = useState('')
+  const panelRef = useRef<HTMLDivElement>(null)
+  const restoreFocusTo = useRef<Element | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -46,10 +48,42 @@ export function SettingsPanel({ open, onClose }: { open: boolean; onClose: () =>
     })()
   }, [open])
 
+  // aria-modal hides the rest of the page from assistive tech, so leaving focus
+  // outside stranded a screen reader on an element it could no longer read —
+  // and Tab could still walk into the app behind the panel.
+  useEffect(() => {
+    if (!open) return
+    restoreFocusTo.current = document.activeElement
+    panelRef.current?.focus()
+    return () => {
+      const prev = restoreFocusTo.current
+      if (prev instanceof HTMLElement) prev.focus()
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const panel = panelRef.current
+      if (!panel) return
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

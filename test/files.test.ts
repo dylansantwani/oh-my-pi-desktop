@@ -47,6 +47,34 @@ describe('extractFileRefs', () => {
   })
 })
 
+// The same extraction has to hold on macOS/Linux, where omp emits POSIX paths.
+// Hardcoded backslashes used to mangle these into `\Users\...` and show the
+// whole absolute path as the file's display name.
+describe('extractFileRefs on POSIX projects', () => {
+  const POSIX = '/Users/dylan/proj'
+
+  it('joins a relative path with forward slashes', () => {
+    const [ref] = extractFileRefs(tool('read', { path: 'src/cli/export.ts' }), POSIX)
+    expect(ref.path).toBe('/Users/dylan/proj/src/cli/export.ts')
+    expect(ref.name).toBe('export.ts')
+  })
+  it('keeps an absolute POSIX path and still names just the file', () => {
+    const [ref] = extractFileRefs(tool('edit', { path: '/Users/dylan/proj/src/main/index.ts' }), POSIX)
+    expect(ref.path).toBe('/Users/dylan/proj/src/main/index.ts')
+    expect(ref.name).toBe('index.ts')
+    expect(ref.modified).toBe(true)
+  })
+  it('does not introduce a double separator when the project dir has a trailing slash', () => {
+    const [ref] = extractFileRefs(tool('read', { path: 'a.txt' }), '/Users/dylan/proj/')
+    expect(ref.path).toBe('/Users/dylan/proj/a.txt')
+  })
+  it('never emits a backslash on a POSIX project', () => {
+    const [ref] = extractFileRefs(tool('write', { path: 'src/renderer/src/App.tsx' }), POSIX)
+    expect(ref.path).not.toContain('\\')
+    expect(ref.name).toBe('App.tsx')
+  })
+})
+
 describe('mergeFileRefs', () => {
   it('dedupes by path and preserves modified across merges', () => {
     const a: FileRef[] = [{ path: 'C:\\proj\\a.txt', name: 'a.txt', modified: false, firstSeenAt: 1 }]

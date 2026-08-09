@@ -16,10 +16,6 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { applyTheme, installTheme, prefersDark } from './lib/theme'
 import type { AppSettings, MenuCommand } from '../../shared/omp-api'
 
-/** The right panel is the third grid track of .app-body. Collapsing it has to
- *  drop the track too, otherwise the chat keeps a 320px dead margin. */
-const COLLAPSED_BODY = { gridTemplateColumns: '264px minmax(0, 1fr)' }
-
 function focusComposer(): void {
   const ta = document.getElementById('composer-input') as HTMLTextAreaElement | null
   if (ta && !ta.disabled) ta.focus()
@@ -114,7 +110,11 @@ export default function App(): React.JSX.Element {
   return (
     <div className="app">
       <TopBar />
-      <div className="app-body" style={rightPanelOpen ? undefined : COLLAPSED_BODY}>
+      {/* Collapsing the right panel has to drop its grid track too, or the chat
+          keeps a dead margin. Expressed as a class rather than an inline style
+          so the responsive rules in global.css can still win at narrow widths —
+          an inline style would beat every media query. */}
+      <div className={rightPanelOpen ? 'app-body' : 'app-body is-collapsed'}>
         <Sidebar />
         <main className="chat">
           <SearchBar />

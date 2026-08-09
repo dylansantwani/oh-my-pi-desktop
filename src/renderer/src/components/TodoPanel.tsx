@@ -16,6 +16,15 @@ const STATUS_CLASS: Record<string, string> = {
   blocked: 'todo-blocked',
   dropped: 'todo-dropped'
 }
+// The icon and its colour are the only visual signal for status, so the label is
+// what carries it to screen readers and to anyone who cannot tell the hues apart.
+const STATUS_LABEL: Record<string, string> = {
+  pending: 'Pending',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  blocked: 'Blocked',
+  dropped: 'Dropped'
+}
 
 export function TodoPanel(): React.JSX.Element | null {
   const todos = useAppStore((s) => s.todos)
@@ -30,6 +39,7 @@ export function TodoPanel(): React.JSX.Element | null {
           <div key={phase.id} className="todo-phase">
             <button
               className="todo-phase-name"
+              aria-expanded={!isCollapsed}
               onClick={() =>
                 setCollapsed((prev) => {
                   const next = new Set(prev)
@@ -47,9 +57,20 @@ export function TodoPanel(): React.JSX.Element | null {
             </button>
             {!isCollapsed &&
               phase.tasks.map((t) => (
-                <div key={t.id} className={`todo-task ${STATUS_CLASS[t.status] ?? 'todo-pending'}`}>
-                  <span className="todo-status-icon">{STATUS_ICON[t.status] ?? <Circle size={12} />}</span>
-                  <span className="ellipsis">{t.content}</span>
+                <div
+                  key={t.id}
+                  className={`todo-task ${STATUS_CLASS[t.status] ?? 'todo-pending'}`}
+                >
+                  <span
+                    className="todo-status-icon"
+                    role="img"
+                    aria-label={STATUS_LABEL[t.status] ?? 'Pending'}
+                    title={STATUS_LABEL[t.status] ?? 'Pending'}
+                  >
+                    {STATUS_ICON[t.status] ?? <Circle size={12} />}
+                  </span>
+                  {/* No `ellipsis` here — a truncated task is unreadable, so it wraps. */}
+                  <span>{t.content}</span>
                 </div>
               ))}
           </div>

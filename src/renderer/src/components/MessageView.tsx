@@ -9,7 +9,8 @@ function CopyMessageButton({ text }: { text: string }): React.JSX.Element {
   return (
     <button
       className={`msg-copy ${copied ? 'copied' : ''}`}
-      title="Copy message"
+      title={copied ? 'Copied' : 'Copy message'}
+      aria-label={copied ? 'Message copied' : 'Copy message'}
       onClick={() => {
         void navigator.clipboard.writeText(text).then(() => {
           setCopied(true)
@@ -38,7 +39,9 @@ export function MessageView({ message }: { message: TranscriptMessage }): React.
           <CopyMessageButton text={message.text} />
         </div>
       ) : (
-        <div className="bubble">
+        <div className="bubble" aria-live="polite" aria-busy={!message.complete}>
+          {/* Announcing every streamed token would be unusable, so aria-busy holds
+              the region back until message_end flips `complete` and it reads once. */}
           <Markdown text={message.text} />
           {message.text && <CopyMessageButton text={message.text} />}
           {!message.complete && <span className="caret" aria-hidden="true" />}
