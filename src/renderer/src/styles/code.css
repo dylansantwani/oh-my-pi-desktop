@@ -1,0 +1,142 @@
+/* ============================================================
+   Syntax highlighting — theme-aware.
+   highlight.js ships one stylesheet per theme, so importing
+   `github-dark.css` pinned code to a dark palette in both themes:
+   in light mode `.hljs-params` resolved to #c9d1d9 on white, about
+   1.5:1, which is invisible. These are tokens that flip with
+   [data-theme], tuned to the app's warm neutral palette rather than
+   GitHub's cooler one, and every value clears WCAG AA on its own
+   background (lowest is 5.10:1).
+   Consumed by the markdown renderer and the file viewer.
+   ============================================================ */
+
+:root {
+  --code-fg: #e9e6de;
+  --code-keyword: #e08a68;
+  --code-entity: #e0c07d;
+  --code-constant: #9fb8c9;
+  --code-string: #a8bd92;
+  --code-comment: #a09a8e;
+  --code-builtin: #d9a978;
+  --code-tag: #a8bd92;
+  --code-section: #9fb8c9;
+  --code-bullet: #e0c07d;
+  --code-addition-fg: #a8bd92;
+  --code-addition-bg: rgba(127, 166, 106, 0.16);
+  --code-deletion-fg: #e0938d;
+  --code-deletion-bg: rgba(217, 99, 92, 0.16);
+}
+
+:root[data-theme='light'] {
+  --code-fg: #23221f;
+  --code-keyword: #9c3f20;
+  --code-entity: #7a5512;
+  --code-constant: #3a5b70;
+  --code-string: #456029;
+  --code-comment: #6f6a61;
+  --code-builtin: #8a551a;
+  --code-tag: #456029;
+  --code-section: #3a5b70;
+  --code-bullet: #7a5512;
+  --code-addition-fg: #456029;
+  --code-addition-bg: rgba(79, 122, 61, 0.13);
+  --code-deletion-fg: #8f2f2a;
+  --code-deletion-bg: rgba(176, 58, 53, 0.13);
+}
+
+.hljs {
+  color: var(--code-fg);
+  background: transparent;
+}
+
+/* The command inside a permission dialog is code, so it is styled here rather
+   than with the modal chrome: it has to be unmistakably not prose before the
+   user decides whether to allow it. */
+.modal-message p {
+  margin: 0 0 8px;
+}
+.modal-message p:last-child {
+  margin-bottom: 0;
+}
+.modal-code {
+  margin: 0 0 10px;
+  padding: 9px 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-family: Consolas, 'Cascadia Mono', monospace;
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: auto;
+}
+
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ { color: var(--code-keyword); }
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ { color: var(--code-entity); }
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id { color: var(--code-constant); }
+
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string { color: var(--code-string); }
+
+.hljs-built_in,
+.hljs-symbol { color: var(--code-builtin); }
+
+.hljs-code,
+.hljs-comment,
+.hljs-formula { color: var(--code-comment); }
+
+.hljs-name,
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo { color: var(--code-tag); }
+
+.hljs-subst { color: var(--code-fg); }
+
+.hljs-section {
+  color: var(--code-section);
+  font-weight: 600;
+}
+
+.hljs-bullet { color: var(--code-bullet); }
+
+.hljs-emphasis {
+  color: var(--code-fg);
+  font-style: italic;
+}
+
+.hljs-strong {
+  color: var(--code-fg);
+  font-weight: 600;
+}
+
+.hljs-addition {
+  color: var(--code-addition-fg);
+  background-color: var(--code-addition-bg);
+}
+
+.hljs-deletion {
+  color: var(--code-deletion-fg);
+  background-color: var(--code-deletion-bg);
+}

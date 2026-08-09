@@ -8,7 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--scrim);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
 }
@@ -96,7 +96,10 @@
   font-size: 12px;
   padding: 4px 11px;
   border-radius: calc(var(--r-md) - 3px);
-  transition: background var(--dur-1) ease, color var(--dur-1) ease;
+  /* No background transition: this panel owns the theme switch, so it is the
+     surface on screen when the tokens re-point — animating background would
+     cross-fade the whole dialog element by element. */
+  transition: color var(--dur-1) ease;
 }
 .settings-segmented button:hover { color: var(--text); }
 .settings-segmented button.on { background: var(--accent-soft); color: var(--accent); }
@@ -137,8 +140,8 @@
   border: 1px solid var(--border);
   background: var(--bg-raised);
   color: var(--text-dim);
-  transition: background var(--dur-1) ease, color var(--dur-1) ease;
+  transition: color var(--dur-1) ease, border-color var(--dur-1) ease;
 }
 .settings-reset:hover { background: var(--bg-hover); color: var(--text); }
-.settings-done { background: var(--accent); border-color: var(--accent); color: #fff; }
+.settings-done { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .settings-done:hover { background: var(--accent-bright); border-color: var(--accent-bright); }
