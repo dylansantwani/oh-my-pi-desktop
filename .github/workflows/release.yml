@@ -28,13 +28,13 @@ on:
   push:
     tags: ['v*']
 
-# electron-builder's GitHub publisher creates/updates the release and uploads
-# assets, which needs write access to repository contents.
+# The publish job creates the GitHub Release and uploads assets to it, which
+# needs write access to repository contents.
 permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -76,30 +76,35 @@ jobs:
           fi
           echo "Releasing v$pkg"
 
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Unit tests
         run: npm test
 
       - name: Build main / preload / renderer
         run: npm run build
 
-      - name: Package and publish
-        run: npx --no-install electron-builder ${{ matrix.builder_args }} --publish always
+      # --publish never, deliberately. Two matrix jobs racing `--publish always`
+      # against the same tag each create their own draft release, because
+      # neither finds one already there -- which split v0.3.0 across two drafts,
+      # one holding the macOS assets and the other the Windows ones. Packaging
+      # and publishing are separated so exactly one job ever creates a release.
+      # electron-builder still emits latest.yml / latest-mac.yml here.
+      - name: Package
+        run: npx --no-install electron-builder ${{ matrix.builder_args }} --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No Apple Developer account yet: stop electron-builder from hunting
           # the keychain for a signing identity. Drop this (and flip
           # build.mac.notarize to true) once certificates are available.
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      # Keeps the installers reachable for 14 days even if the draft release is
-      # deleted or the publish step half-finishes.
-      - name: Upload installers as workflow artifacts
-        if: always()
+      - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
           name: installers-${{ matrix.os }}
           retention-days: 14
-          if-no-files-found: warn
+          if-no-files-found: error
           path: |
             dist/*.dmg
             dist/*.zip
@@ -107,19 +112,41 @@ jobs:
             dist/*.blockmap
             dist/latest*.yml
 
-  # electron-builder publishes as a DRAFT release by default. Auto-update
-  # clients cannot see draft assets, so the release must be published (in the
-  # GitHub UI, or by adding `"releaseType": "release"` to the publish block in
-  # package.json) before latest.yml / latest-mac.yml go live.
-  summary:
-    name: Release summary
-    needs: release
-    if: always()
+  publish:
+    name: Publish release
+    needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Report
+      - name: Collect installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          merge-multiple: true
+          path: dist
+
+      # latest.yml and latest-mac.yml are the auto-update feeds. If either is
+      # missing the corresponding platform silently stops receiving updates,
+      # so treat their absence as a failed release rather than shipping.
+      - name: Verify both auto-update feeds are present
         run: |
-          echo "### ${GITHUB_REF_NAME} packaged" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Assets were uploaded to a **draft** GitHub Release." >> "$GITHUB_STEP_SUMMARY"
-          echo "Publish the draft to activate auto-updates (latest.yml / latest-mac.yml)." >> "$GITHUB_STEP_SUMMARY"
+          ls -la dist
+          missing=0
+          for f in latest.yml latest-mac.yml; do
+            [ -f "dist/$f" ] || { echo "::error::dist/$f missing"; missing=1; }
+          done
+          exit $missing
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Oh My Pi Desktop $GITHUB_REF_NAME" \
+            --generate-notes
+          {
+            echo "### $GITHUB_REF_NAME published"
+            echo
+            gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --json assets -q '.assets[] | "- \(.name)"'
+          } >> "$GITHUB_STEP_SUMMARY"
