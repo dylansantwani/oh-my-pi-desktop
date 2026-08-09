@@ -27,7 +27,18 @@ beforeAll(() => {
   writeFileSync(CRASHER, `${READY}\nsetTimeout(() => process.exit(1), 20)\n`)
 })
 
-afterAll(() => rmSync(scratch, { recursive: true, force: true }))
+/** Windows refuses to remove a directory that is a live process's cwd, and can
+ *  hold the handle briefly even after the child exits. Cleanup failing is never
+ *  a reason to fail a test, so retry and then give the temp dir back to the OS. */
+function rmDir(dir: string): void {
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 })
+  } catch {
+    /* the OS reaps its own temp directory */
+  }
+}
+
+afterAll(() => rmDir(scratch))
 
 /** Real-timer poll: the conditions below are driven by actual OS processes. */
 async function waitFor(cond: () => boolean, timeoutMs = 5000): Promise<void> {
@@ -123,8 +134,11 @@ describe('AgentHost', () => {
     // ok, so the renderer displayed and remembered b while the agent ran in a.
     expect(reports).toEqual([b])
     await expect(first).resolves.toBe('rejected')
-    rmSync(a, { recursive: true, force: true })
-    rmSync(b, { recursive: true, force: true })
+    // Stop the agent before removing the directories it was spawned in: on
+    // Windows the running child holds `b` as its cwd and rmSync fails EBUSY.
+    h.disconnect()
+    rmDir(a)
+    rmDir(b)
   })
 
   it('keeps an error listener attached while a client is torn down', async () => {
