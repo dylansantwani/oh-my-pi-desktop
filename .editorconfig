@@ -1,0 +1,19 @@
+# EditorConfig — https://editorconfig.org
+# Matches the repo's actual style: 2-space indent, LF, trailing newline, no semicolon-heavy style enforced here (that's the code's job).
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+# Markdown keeps trailing whitespace meaningful (two spaces = hard line break).
+[*.md]
+trim_trailing_whitespace = false
+
+# Windows-oriented files stay CRLF.
+[*.{bat,cmd,ps1}]
+end_of_line = crlf

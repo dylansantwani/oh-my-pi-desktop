@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest a capability or improvement for the desktop app.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A few things are intentionally out of scope for now — an embedded
+        terminal, a git panel, concurrent multi-session streaming, and a Linux
+        build. See the "Not yet" section of the README before filing, but if you
+        have a case for one of them, make it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that the app makes hard or impossible today?
+      placeholder: When I have many sessions in a project, I can't ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should the app do instead? UI, behavior, wherever you'd expect it.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches or workarounds you thought about.
