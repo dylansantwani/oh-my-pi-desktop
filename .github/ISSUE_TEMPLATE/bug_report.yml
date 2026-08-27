@@ -1,0 +1,69 @@
+name: Bug report
+description: Something in the desktop app is broken or behaves unexpectedly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. This is the GUI client — if the problem is in the
+        `omp` agent itself (a bad model response, a tool misbehaving), it likely
+        belongs in the agent's own repo. If you're not sure, file it here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What went wrong, and what you expected instead.
+      placeholder: Sending a message did X; I expected Y.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The exact sequence that triggers it.
+      placeholder: |
+        1. Open project '...'
+        2. New session, send '...'
+        3. See the error
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: From the About panel (Help → About), or the release you installed.
+      placeholder: 0.4.0
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows 10
+        - Windows 11
+        - Other / dev build
+    validations:
+      required: true
+  - type: input
+    id: install-method
+    attributes:
+      label: How you installed it
+      description: DMG, Windows installer, portable exe, or built from source.
+      placeholder: DMG (arm64)
+  - type: input
+    id: omp-version
+    attributes:
+      label: omp version
+      description: Output of `omp --version`, if the app got far enough to connect.
+      placeholder: omp x.y.z
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: |
+        Any relevant toast text, a screenshot, or console output. Open DevTools
+        with View → Toggle Developer Tools. Please redact anything sensitive.
+      render: shell

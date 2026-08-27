@@ -10,7 +10,7 @@ The `omp` agent ships with a terminal TUI and an RPC mode. This is the GUI —
 an Electron app that drives `omp --mode rpc` as a child process and renders the
 whole conversation: streaming markdown, tool-call cards, todos, and sessions.
 
-[![Website](https://img.shields.io/badge/site-oh--my--pi--desktop.pulse--core.com-60a5fa?style=flat-square)](https://oh-my-pi-desktop.pulse-core.com)
+[![CI](https://github.com/dylansantwani/oh-my-pi-desktop/actions/workflows/ci.yml/badge.svg)](https://github.com/dylansantwani/oh-my-pi-desktop/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-4ade80?style=flat-square)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.4.0-64748b?style=flat-square)](package.json)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS-5b8c5a?style=flat-square)](#requirements)
@@ -19,7 +19,7 @@ whole conversation: streaming markdown, tool-call cards, todos, and sessions.
 
 ### [🌐 oh-my-pi-desktop.pulse-core.com](https://oh-my-pi-desktop.pulse-core.com)
 
-[Requirements](#requirements) · [Install](#install) · [Features](#features) · [Architecture](#architecture) · [Protocol](#protocol-notes) · [Development](#development)
+[Requirements](#requirements) · [Install](#install) · [Getting started](#getting-started) · [Features](#features) · [Architecture](#architecture) · [Protocol](#protocol-notes) · [Development](#development) · [Contributing](#contributing)
 
 <img src="docs/screenshot.png" width="820" alt="Oh My Pi Desktop showing a session transcript, tool-call cards and the todo panel">
 
@@ -27,16 +27,17 @@ whole conversation: streaming markdown, tool-call cards, todos, and sessions.
 
 ---
 
-## Why
+## What it is
 
 `omp` is a capable coding agent, but its only interface is an interactive
 terminal TUI. That's a poor fit for reading long transcripts, scanning tool
 calls, or keeping several projects' sessions straight.
 
-The harness already exposes a clean integration surface — **RPC mode**, a
-newline-delimited JSON protocol over stdio, framed and id-correlated with a v2
-lossless chunking transport. This app is a client for it. It is not a terminal
-wrapper: there is no PTY, no ANSI parsing, no screen scraping.
+Oh My Pi Desktop is a GUI client for that agent. It talks to the harness's
+**RPC mode** — a newline-delimited JSON protocol over stdio, framed and
+id-correlated with a v2 lossless chunking transport — and projects every event
+into a real chat interface. It is not a terminal wrapper: there is no PTY, no
+ANSI parsing, no screen scraping.
 
 > **It never touches your credentials.** Auth stays in `omp`'s own store at
 > `~/.omp/agent`. The app spawns a process and speaks a protocol to it, nothing
@@ -47,8 +48,9 @@ wrapper: there is no PTY, no ANSI parsing, no screen scraping.
 ## Requirements
 
 - **Windows 10/11**, or **macOS 11+** (Apple Silicon and Intel)
-- **`omp` installed.** The app probes the usual install locations and your PATH;
-  if yours lives somewhere unusual, set an explicit path in Settings.
+- **`omp` installed.** The app probes the usual install locations
+  (`~/.local/bin`, Homebrew, bun, cargo, npm globals, `C:\Program Files\Oh My Pi`)
+  and your PATH; if yours lives somewhere unusual, set an explicit path in Settings.
 - **Node ≥ 22.12.0 and npm** — for development only, not for running the installer.
   Earlier 22.x fails the jsdom renderer tests with an ESM `require()` error; `engines` enforces the floor.
 
@@ -97,6 +99,35 @@ macOS and a Windows runner and uploads every artifact plus the `latest.yml` /
 
 ---
 
+## Getting started
+
+Once `omp` is on your machine and the app is installed, first light takes about
+a minute:
+
+1. **Launch the app.** It resolves your login-shell PATH, probes the known
+   install locations, and connects to `omp`. If it can't find the binary, open
+   **Settings** (`Cmd/Ctrl+,`) and set the **omp binary** path explicitly — the
+   field shows the path currently in use and falls back to auto-detect when blank.
+2. **Choose a project.** Click the project chip in the sidebar footer
+   (or **File → Open Project…**, `Cmd/Ctrl+O`) and pick a directory. The app
+   groups sessions by the `cwd` recorded in each session file, so this is the
+   working directory `omp` runs in.
+3. **Start a session.** Hit **New Session** (`Cmd/Ctrl+N`), type a task in the
+   composer at the bottom, and send. Assistant output streams in as markdown;
+   each tool the agent runs becomes an inline card you can expand for its
+   arguments and result.
+4. **Steer as it works.** Mid-turn you can abort, send an interrupting message
+   to redirect, or queue a follow-up for after the turn. The model picker,
+   thinking level, and fast-mode toggle live in the top bar.
+5. **Come back later.** Earlier sessions for the project are listed in the
+   sidebar — click to resume, rename, or **export the transcript to HTML** for
+   sharing.
+
+Handy keys: `Cmd/Ctrl+K` command palette · `Cmd/Ctrl+F` find in transcript ·
+`Cmd/Ctrl+L` focus composer · `Cmd/Ctrl+B` toggle the right panel.
+
+---
+
 ## Features
 
 | | |
@@ -123,6 +154,24 @@ streaming — `omp` RPC hosts one active session per process, so navigation is
 switch-then-view. No Linux build. No paid code signing or notarization; the
 auto-update channel uses the GitHub-hosted `latest.yml` / `latest-mac.yml` and
 is not tied to signing.
+
+---
+
+## Configuration
+
+Everything is in **Settings** (`Cmd/Ctrl+,`); there is no config file to edit
+by hand.
+
+| Setting | What it does |
+|---|---|
+| **Theme** | System, Dark, or Light. System follows the OS and repaints on change. |
+| **Text size** | Scales the transcript font. |
+| **Notify when a turn finishes** | Desktop notification when the agent finishes a turn while the window is unfocused. |
+| **Check for updates automatically** | Opt out of the background GitHub Releases check. |
+| **omp binary** | Explicit path to the agent. Blank = auto-detect; the row shows the path in use. |
+
+Settings persist to a single JSON file shared across windows; a change in one
+window broadcasts to the others.
 
 ---
 
@@ -219,10 +268,24 @@ The unit tests use a mock `omp`: a Node script that emits canned JSONL — ready
 frame, v2 negotiation, response correlation, streaming deltas, tool events, and
 a chunked v2 frame. That covers the protocol without needing a model.
 
+CI (`.github/workflows/ci.yml`) runs the full gate — typecheck, tests, build,
+a check that the packaged main/preload bundles need no `node_modules`, and an
+icon regeneration — on Ubuntu, macOS, and Windows for every push and PR to `main`.
+
 | Doc | What it is for |
 |---|---|
 | [docs/superpowers/specs/](docs/superpowers/specs/) | The approved design — goals, non-goals, architecture, error table |
 | [docs/superpowers/plans/](docs/superpowers/plans/) | Full implementation plan, milestone by milestone |
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for
+the dev setup, the test/typecheck gate your change has to pass, and the
+[Conventional Commits](https://www.conventionalcommits.org/) convention this repo
+uses. Working with an AI agent in this repo? [AGENTS.md](AGENTS.md) has the
+short version.
 
 ---
 

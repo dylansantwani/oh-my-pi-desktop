@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project website
+    url: https://oh-my-pi-desktop.pulse-core.com
+    about: Overview, screenshots, and download links.
+  - name: Latest releases
+    url: https://github.com/dylansantwani/oh-my-pi-desktop/releases
+    about: Download the newest build or check what changed.
